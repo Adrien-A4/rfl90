@@ -50,7 +50,7 @@ export async function GET(req: Request) {
 
     if (!guildId || !botToken) {
       console.error("Missing GUILD_ID or BOT_TOKEN environment variables");
-      const response = NextResponse.redirect("http://localhost:3000/");
+      const response = NextResponse.redirect("https://rfl90.ddns.net/");
       response.headers.set(
         "Set-Cookie",
         cookie.serialize("discord_token", tokenData.access_token, {
@@ -130,7 +130,7 @@ export async function GET(req: Request) {
                       id: "1470488884503646349",
                     },
                     label: "Visit Website",
-                    url: "http://localhost:3000/",
+                    url: "https://rfl90.ddns.net/",
                   },
                   {
                     type: 2,
@@ -151,7 +151,7 @@ export async function GET(req: Request) {
     }
     dmChannelRes.status !== 200 &&
       console.error("Failed to create DM channel:", await dmChannelRes.text());
-    const response = NextResponse.redirect("http://localhost:3000/");
+    const response = NextResponse.redirect("https://rfl90.ddns.net/");
     response.headers.set(
       "Set-Cookie",
       cookie.serialize("discord_token", tokenData.access_token, {
