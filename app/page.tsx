@@ -42,7 +42,17 @@ type Match = {
   };
 };
 
-const news: any[] = [];
+type News = {
+  id: string;
+  title: string;
+  content: string;
+  image_url: string | null;
+  author: string;
+  category: string;
+  is_published: boolean;
+  published_at: string | null;
+  created_at: string;
+};
 
 const DEFAULT_LEAGUES: League[] = [
   {
@@ -59,6 +69,7 @@ const RFL90 = () => {
   const [expandedLeague, setExpandedLeague] = useState("league-1");
   const [leagues, setLeagues] = useState<League[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [news, setNews] = useState<News[]>([]);
   const [teams, setTeams] = useState<
     Record<
       string,
@@ -72,7 +83,18 @@ const RFL90 = () => {
     fetchLeagues();
     fetchTeams();
     fetchMatches();
+    fetchNews();
   }, []);
+
+  const fetchNews = async () => {
+    try {
+      const res = await fetch("/api/admin/news?published=true");
+      const data = await res.json();
+      setNews(data.news || []);
+    } catch (err) {
+      console.error("Failed to fetch news:", err);
+    }
+  };
 
   const fetchLeagues = async () => {
     try {
@@ -538,24 +560,42 @@ const RFL90 = () => {
 
                 <div className="space-y-4">
                   {news.map((item) => (
-                    <div key={item.id} className="group cursor-pointer">
+                    <a
+                      key={item.id}
+                      href="/news"
+                      className="group cursor-pointer block"
+                    >
                       <div className="aspect-video bg-white/5 rounded-lg mb-3 overflow-hidden">
-                        <Image
-                          src={item.image}
-                          alt={item.title}
-                          width={300}
-                          height={169}
-                          className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
-                        />
+                        {item.image_url ? (
+                          <Image
+                            src={item.image_url}
+                            alt={item.title}
+                            width={300}
+                            height={169}
+                            className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-white/5 flex items-center justify-center">
+                            <span className="text-white/20 text-xs">
+                              No image
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <h4 className="font-medium text-sm group-hover:text-white/80 transition-colors line-clamp-2">
                         {item.title}
                       </h4>
                       <p className="text-xs text-white/40 mt-1">
-                        {item.source} • {item.time}
+                        {item.author} •{" "}
+                        {new Date(item.created_at).toLocaleDateString()}
                       </p>
-                    </div>
+                    </a>
                   ))}
+                  {news.length === 0 && (
+                    <p className="text-sm text-white/40 text-center py-4">
+                      No news available
+                    </p>
+                  )}
                 </div>
               </div>
             </motion.div>

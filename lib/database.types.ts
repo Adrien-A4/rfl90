@@ -163,6 +163,11 @@ export interface Database {
         Insert: Omit<Standing, "updated_at">;
         Update: Partial<Omit<Standing, "id">>;
       };
+      news: {
+        Row: News;
+        Insert: Omit<News, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<News, "id">>;
+      };
     };
   };
 }
@@ -181,4 +186,17 @@ export interface TransferWithDetails extends Transfer {
   player?: Player;
   from_team?: Team;
   to_team?: Team;
+}
+
+export interface News {
+  id: string;
+  title: string;
+  content: string;
+  image_url: string | null;
+  author: string;
+  category: string;
+  is_published: boolean;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
 }

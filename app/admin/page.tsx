@@ -13,12 +13,13 @@ import {
   X,
   Trophy,
   Lock,
+  FileText,
 } from "lucide-react";
 import { useToast } from "@/components/ui/sonner";
 import { Select } from "./components/Select";
 import { NumberInput } from "./components/NumberInput";
 
-type Tab = "teams" | "players" | "matches" | "leagues";
+type Tab = "teams" | "players" | "matches" | "leagues" | "news";
 
 interface AuthUser {
   id: string;
@@ -70,6 +71,18 @@ interface Match {
   scheduled_at: string;
 }
 
+interface News {
+  id: string;
+  title: string;
+  content: string;
+  image_url: string | null;
+  author: string;
+  category: string;
+  is_published: boolean;
+  published_at: string | null;
+  created_at: string;
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -78,16 +91,17 @@ export default function AdminPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [news, setNews] = useState<News[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<
-    Team | Player | Match | League | null
+    Team | Player | Match | League | News | null
   >(null);
   const [formData, setFormData] = useState<
-    Record<string, string | number | null>
+    Record<string, string | number | boolean | null>
   >({});
 
   useEffect(() => {
@@ -126,20 +140,24 @@ export default function AdminPage() {
     if (!isAuthenticated || !isAdmin) return;
 
     try {
-      const [teamsRes, playersRes, matchesRes, leaguesRes] = await Promise.all([
-        fetch("/api/admin/teams"),
-        fetch("/api/admin/players"),
-        fetch("/api/admin/matches"),
-        fetch("/api/admin/leagues"),
-      ]);
+      const [teamsRes, playersRes, matchesRes, leaguesRes, newsRes] =
+        await Promise.all([
+          fetch("/api/admin/teams"),
+          fetch("/api/admin/players"),
+          fetch("/api/admin/matches"),
+          fetch("/api/admin/leagues"),
+          fetch("/api/admin/news"),
+        ]);
       const teamsData = await teamsRes.json();
       const playersData = await playersRes.json();
       const matchesData = await matchesRes.json();
       const leaguesData = await leaguesRes.json();
+      const newsData = await newsRes.json();
       setTeams(teamsData.teams || []);
       setPlayers(playersData.players || []);
       setMatches(matchesData.matches || []);
       setLeagues(leaguesData.leagues || []);
+      setNews(newsData.news || []);
     } catch (err) {
       console.error("Failed to fetch data:", err);
       toast({
@@ -164,7 +182,10 @@ export default function AdminPage() {
     setModalOpen(true);
   };
 
-  const handleEdit = (item: Team | Player | Match | League, type: Tab) => {
+  const handleEdit = (
+    item: Team | Player | Match | League | News,
+    type: Tab,
+  ) => {
     setEditingItem(item);
 
     if (type === "teams") {
@@ -213,6 +234,18 @@ export default function AdminPage() {
         competition: match.competition,
         round: match.round,
         scheduledAt: match.scheduled_at,
+      });
+    } else if (type === "news") {
+      const newsItem = item as News;
+      setFormData({
+        id: newsItem.id,
+        title: newsItem.title,
+        content: newsItem.content,
+        imageUrl: newsItem.image_url,
+        author: newsItem.author,
+        category: newsItem.category,
+        isPublished: newsItem.is_published,
+        publishedAt: newsItem.published_at,
       });
     }
 
@@ -293,10 +326,21 @@ export default function AdminPage() {
           round: formData.round,
           scheduled_at: formData.scheduledAt,
         };
+      } else if (type === "news") {
+        body = {
+          id: formData.id,
+          title: formData.title,
+          content: formData.content,
+          image_url: formData.imageUrl,
+          author: formData.author,
+          category: formData.category,
+          is_published: formData.isPublished,
+          published_at: formData.publishedAt,
+        };
       }
 
       const res = await fetch(
-        `/api/admin/${type === "leagues" ? "leagues" : type.slice(0, -1) + "s"}`,
+        `/api/admin/${type === "leagues" ? "leagues" : type === "news" ? "news" : type.slice(0, -1) + "s"}`,
         {
           method: isEditing ? "PUT" : "POST",
           headers: { "Content-Type": "application/json" },
@@ -311,7 +355,7 @@ export default function AdminPage() {
           title: "Success",
           description: isEditing
             ? `${type.slice(0, -1)} updated successfully`
-            : `${type.slice(0, -1)} created successfully`,
+            : `${type === "news" ? "News article" : type.slice(0, -1)} created successfully`,
           variant: "success",
         });
       }
@@ -402,7 +446,9 @@ export default function AdminPage() {
                 ? "Match"
                 : activeTab === "leagues"
                   ? "League"
-                  : activeTab.slice(0, -1)}
+                  : activeTab === "news"
+                    ? "News"
+                    : activeTab.slice(0, -1)}
             </button>
           </div>
         </div>
@@ -413,6 +459,7 @@ export default function AdminPage() {
             { id: "leagues", label: "Leagues", icon: Shield },
             { id: "players", label: "Players", icon: Users },
             { id: "matches", label: "Matches", icon: Calendar },
+            { id: "news", label: "News", icon: FileText },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -902,6 +949,103 @@ export default function AdminPage() {
               )}
             </motion.div>
           )}
+
+          {activeTab === "news" && (
+            <motion.div
+              key="news"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="bg-[#1a1a1a] rounded-xl overflow-hidden"
+            >
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-white/10">
+                    <th className="text-left p-4 text-white/60 font-medium">
+                      Title
+                    </th>
+                    <th className="text-left p-4 text-white/60 font-medium">
+                      Author
+                    </th>
+                    <th className="text-left p-4 text-white/60 font-medium">
+                      Category
+                    </th>
+                    <th className="text-left p-4 text-white/60 font-medium">
+                      Status
+                    </th>
+                    <th className="text-left p-4 text-white/60 font-medium">
+                      Date
+                    </th>
+                    <th className="text-right p-4 text-white/60 font-medium">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {news.map((newsItem) => (
+                    <tr
+                      key={newsItem.id}
+                      className="border-b border-white/5 hover:bg-white/5"
+                    >
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          {newsItem.image_url && (
+                            <div className="w-10 h-10 rounded overflow-hidden bg-white/10">
+                              <img
+                                src={newsItem.image_url}
+                                alt={newsItem.title}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                          <span className="text-white font-medium truncate max-w-xs">
+                            {newsItem.title}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-4 text-white/60">{newsItem.author}</td>
+                      <td className="p-4">
+                        <span className="px-2 py-1 rounded text-xs font-medium bg-blue-900/30 text-blue-400">
+                          {newsItem.category}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-medium ${newsItem.is_published ? "bg-green-900/30 text-green-400" : "bg-yellow-900/30 text-yellow-400"}`}
+                        >
+                          {newsItem.is_published ? "Published" : "Draft"}
+                        </span>
+                      </td>
+                      <td className="p-4 text-white/60 text-sm">
+                        {new Date(newsItem.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => handleEdit(newsItem, "news")}
+                            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                          >
+                            <Edit className="w-4 h-4 text-white/40" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(newsItem.id, "news")}
+                            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-400" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {news.length === 0 && (
+                <div className="p-8 text-center text-white/40">
+                  No news articles added yet. Click "Add News" to get started.
+                </div>
+              )}
+            </motion.div>
+          )}
         </AnimatePresence>
 
         <AnimatePresence>
@@ -925,7 +1069,9 @@ export default function AdminPage() {
                     {editingItem ? "Edit" : "Add"}{" "}
                     {activeTab === "leagues"
                       ? "League"
-                      : activeTab.slice(0, -1)}
+                      : activeTab === "news"
+                        ? "News Article"
+                        : activeTab.slice(0, -1)}
                   </h2>
                   <button
                     onClick={() => setModalOpen(false)}
@@ -1355,6 +1501,134 @@ export default function AdminPage() {
                           }
                           className="w-full px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg focus:outline-none focus:border-white/20 transition-all text-white"
                         />
+                      </div>
+                    </>
+                  )}
+
+                  {activeTab === "news" && (
+                    <>
+                      <div>
+                        <label className="block text-sm text-white/60 mb-1">
+                          Title
+                        </label>
+                        <input
+                          type="text"
+                          value={(formData.title as string) || ""}
+                          onChange={(e) =>
+                            setFormData({ ...formData, title: e.target.value })
+                          }
+                          className="w-full px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg focus:outline-none focus:border-white/20 transition-all text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-white/60 mb-1">
+                          Content
+                        </label>
+                        <textarea
+                          value={(formData.content as string) || ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              content: e.target.value,
+                            })
+                          }
+                          rows={5}
+                          className="w-full px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg focus:outline-none focus:border-white/20 transition-all text-white resize-none"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm text-white/60 mb-1">
+                            Image URL
+                          </label>
+                          <input
+                            type="text"
+                            value={(formData.imageUrl as string) || ""}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                imageUrl: e.target.value,
+                              })
+                            }
+                            className="w-full px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg focus:outline-none focus:border-white/20 transition-all text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm text-white/60 mb-1">
+                            Category
+                          </label>
+                          <input
+                            type="text"
+                            value={(formData.category as string) || ""}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                category: e.target.value,
+                              })
+                            }
+                            className="w-full px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg focus:outline-none focus:border-white/20 transition-all text-white"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm text-white/60 mb-1">
+                            Author
+                          </label>
+                          <input
+                            type="text"
+                            value={(formData.author as string) || ""}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                author: e.target.value,
+                              })
+                            }
+                            className="w-full px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg focus:outline-none focus:border-white/20 transition-all text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm text-white/60 mb-1">
+                            Published Date
+                          </label>
+                          <input
+                            type="datetime-local"
+                            value={
+                              formData.publishedAt
+                                ? new Date(formData.publishedAt as string)
+                                    .toISOString()
+                                    .slice(0, 16)
+                                : ""
+                            }
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                publishedAt: e.target.value
+                                  ? new Date(e.target.value).toISOString()
+                                  : null,
+                              })
+                            }
+                            className="w-full px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg focus:outline-none focus:border-white/20 transition-all text-white"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={(formData.isPublished as boolean) || false}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                isPublished: e.target.checked,
+                              })
+                            }
+                            className="w-4 h-4 rounded border-white/20 bg-[#0d0d0d]"
+                          />
+                          <span className="text-sm text-white/60">
+                            Published
+                          </span>
+                        </label>
                       </div>
                     </>
                   )}
