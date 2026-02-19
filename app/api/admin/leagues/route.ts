@@ -56,7 +56,7 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   try {
     const body = await req.json();
-    const { id, ...updates } = body;
+    const { id, ...data } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -65,8 +65,17 @@ export async function PUT(req: Request) {
       );
     }
 
+    const updates = {
+      name: data.name,
+      short_name: data.shortName,
+      logo: data.logo,
+      country: data.country,
+      tier: data.tier,
+      season: data.season,
+    };
+
     const supabase = getServerSupabase();
-    const { data, error } = await supabase
+    const { data: updatedData, error } = await supabase
       .from("leagues")
       .update(updates)
       .eq("id", id)
@@ -75,7 +84,7 @@ export async function PUT(req: Request) {
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, league: data });
+    return NextResponse.json({ success: true, league: updatedData });
   } catch (err) {
     console.error("Error updating league:", err);
     return NextResponse.json(

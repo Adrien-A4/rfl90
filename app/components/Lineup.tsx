@@ -94,6 +94,11 @@ const Lineup = ({ compact = false }: LineupProps) => {
           fetch("/api/admin/players"),
           fetch("/api/admin/teams"),
         ]);
+
+        if (!playersRes.ok || !teamsRes.ok) {
+          throw new Error("One or more API calls failed");
+        }
+
         const playersData = await playersRes.json();
         const teamsData = await teamsRes.json();
 

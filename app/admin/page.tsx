@@ -148,6 +148,17 @@ export default function AdminPage() {
           fetch("/api/admin/leagues"),
           fetch("/api/admin/news"),
         ]);
+
+      if (
+        !teamsRes.ok ||
+        !playersRes.ok ||
+        !matchesRes.ok ||
+        !leaguesRes.ok ||
+        !newsRes.ok
+      ) {
+        throw new Error("One or more API calls failed");
+      }
+
       const teamsData = await teamsRes.json();
       const playersData = await playersRes.json();
       const matchesData = await matchesRes.json();
@@ -358,11 +369,18 @@ export default function AdminPage() {
             : `${type === "news" ? "News article" : type.slice(0, -1)} created successfully`,
           variant: "success",
         });
+      } else {
+        const errorData = await res.json();
+        toast({
+          title: "Error",
+          description: errorData.error || "Failed to save",
+          variant: "destructive",
+        });
       }
     } catch (err) {
       toast({
         title: "Error",
-        description: "Failed to save",
+        description: err instanceof Error ? err.message : "Failed to save",
         variant: "destructive",
       });
     }
@@ -1334,11 +1352,11 @@ export default function AdminPage() {
                           </label>
                           <input
                             type="text"
-                            value={(formData.pictureUrl as string) || ""}
+                            value={(formData.image as string) || ""}
                             onChange={(e) =>
                               setFormData({
                                 ...formData,
-                                pictureUrl: e.target.value,
+                                image: e.target.value,
                               })
                             }
                             className="w-full px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg focus:outline-none focus:border-white/20 transition-all text-white"
@@ -1347,20 +1365,34 @@ export default function AdminPage() {
 
                         <div>
                           <label className="block text-sm text-white/60 mb-1">
-                            Nationality
+                            Age
                           </label>
-                          <input
-                            type="text"
-                            value={(formData.nationality as string) || ""}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                nationality: e.target.value,
-                              })
+                          <NumberInput
+                            value={(formData.age as number) ?? 25}
+                            onChange={(val) =>
+                              setFormData({ ...formData, age: val })
                             }
-                            className="w-full px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg focus:outline-none focus:border-white/20 transition-all text-white"
+                            min={16}
+                            max={45}
                           />
                         </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm text-white/60 mb-1">
+                          Nationality
+                        </label>
+                        <input
+                          type="text"
+                          value={(formData.nationality as string) || ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              nationality: e.target.value,
+                            })
+                          }
+                          className="w-full px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg focus:outline-none focus:border-white/20 transition-all text-white"
+                        />
                       </div>
                     </>
                   )}

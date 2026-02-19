@@ -72,7 +72,7 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   try {
     const body = await req.json();
-    const { id, ...updates } = body;
+    const { id, ...data } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -81,20 +81,28 @@ export async function PUT(req: Request) {
       );
     }
 
+    const updates = {
+      title: data.title,
+      content: data.content,
+      image_url: data.image_url,
+      author: data.author,
+      category: data.category,
+      is_published: data.is_published,
+      published_at: data.published_at,
+      updated_at: new Date().toISOString(),
+    };
+
     const supabase = getServerSupabase();
-    const { data, error } = await supabase
+    const { data: updatedData, error } = await supabase
       .from("news")
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updates)
       .eq("id", id)
       .select()
       .single();
 
     if (error) throw error;
 
-    return NextResponse.json({ news: data });
+    return NextResponse.json({ news: updatedData });
   } catch (err) {
     console.error("Error updating news:", err);
     return NextResponse.json(

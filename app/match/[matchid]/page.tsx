@@ -61,6 +61,7 @@ export default function MatchPage({
         const res = await fetch(
           `/api/admin/matches?matchId=${resolvedParams.matchid}`,
         );
+        if (!res.ok) throw new Error(`API error: ${res.status}`);
         const data = await res.json();
         if (data.matches && data.matches.length > 0) {
           setMatch(data.matches[0]);

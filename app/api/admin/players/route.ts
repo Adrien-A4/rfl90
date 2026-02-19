@@ -76,7 +76,7 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   try {
     const body = await req.json();
-    const { id, ...updates } = body;
+    const { id, ...data } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -85,8 +85,22 @@ export async function PUT(req: Request) {
       );
     }
 
+    const updates = {
+      name: data.name,
+      short_name: data.shortName,
+      image: data.image,
+      team_id: data.teamId,
+      position: data.position,
+      rating: data.rating,
+      age: data.age,
+      nationality: data.nationality,
+      jersey_number: data.jerseyNumber,
+      contract_until: data.contractUntil,
+      market_value: data.marketValue,
+    };
+
     const supabase = getServerSupabase();
-    const { data, error } = await supabase
+    const { data: updatedData, error } = await supabase
       .from("players")
       .update(updates)
       .eq("id", id)
@@ -95,7 +109,7 @@ export async function PUT(req: Request) {
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, player: data });
+    return NextResponse.json({ success: true, player: updatedData });
   } catch (err) {
     console.error("Error updating player:", err);
     return NextResponse.json(

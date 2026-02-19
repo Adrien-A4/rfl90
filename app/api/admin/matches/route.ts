@@ -101,7 +101,7 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   try {
     const body = await req.json();
-    const { id, ...updates } = body;
+    const { id, ...data } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -110,8 +110,21 @@ export async function PUT(req: Request) {
       );
     }
 
+    const updates = {
+      home_team_id: data.homeTeamId,
+      away_team_id: data.awayTeamId,
+      home_score: data.homeScore,
+      away_score: data.awayScore,
+      status: data.status,
+      competition: data.competition,
+      round: data.round,
+      scheduled_at: data.scheduledAt,
+      venue: data.venue,
+      referee: data.referee,
+    };
+
     const supabase = getServerSupabase();
-    const { data, error } = await supabase
+    const { data: updatedData, error } = await supabase
       .from("matches")
       .update(updates)
       .eq("id", id)
@@ -120,7 +133,7 @@ export async function PUT(req: Request) {
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, match: data });
+    return NextResponse.json({ success: true, match: updatedData });
   } catch (err) {
     console.error("Error updating match:", err);
     return NextResponse.json(

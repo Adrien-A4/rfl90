@@ -63,7 +63,7 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   try {
     const body = await req.json();
-    const { id, ...updates } = body;
+    const { id, ...data } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -72,8 +72,18 @@ export async function PUT(req: Request) {
       );
     }
 
+    const updates = {
+      name: data.name,
+      short_name: data.shortName,
+      logo: data.logo,
+      primary_color: data.primaryColor,
+      secondary_color: data.secondaryColor,
+      stadium: data.stadium,
+      founded_year: data.foundedYear,
+    };
+
     const supabase = getServerSupabase();
-    const { data, error } = await supabase
+    const { data: updatedData, error } = await supabase
       .from("teams")
       .update(updates)
       .eq("id", id)
@@ -82,7 +92,7 @@ export async function PUT(req: Request) {
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, team: data });
+    return NextResponse.json({ success: true, team: updatedData });
   } catch (err) {
     console.error("Error updating team:", err);
     return NextResponse.json(

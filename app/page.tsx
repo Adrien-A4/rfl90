@@ -89,16 +89,19 @@ const RFL90 = () => {
   const fetchNews = async () => {
     try {
       const res = await fetch("/api/admin/news?published=true");
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
       const data = await res.json();
       setNews(data.news || []);
     } catch (err) {
       console.error("Failed to fetch news:", err);
+      setNews([]);
     }
   };
 
   const fetchLeagues = async () => {
     try {
       const res = await fetch("/api/admin/leagues");
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
       const data = await res.json();
       if (data.leagues && data.leagues.length > 0) {
         setLeagues(data.leagues);
@@ -111,6 +114,7 @@ const RFL90 = () => {
   const fetchTeams = async () => {
     try {
       const res = await fetch("/api/admin/teams");
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
       const data = await res.json();
       const teamsMap: Record<
         string,
@@ -140,10 +144,12 @@ const RFL90 = () => {
   const fetchMatches = async () => {
     try {
       const res = await fetch("/api/admin/matches");
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
       const data = await res.json();
       setMatches(data.matches || []);
     } catch (err) {
       console.error("Failed to fetch matches:", err);
+      setMatches([]);
     }
   };
 
@@ -245,7 +251,13 @@ const RFL90 = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-8">
               <h1 className="text-2xl font-bold tracking-tight">
-                RFL <span className="text-muted-foreground/60">90'</span>
+                <Image
+                  src="/logo.png"
+                  draggable={false}
+                  alt="RFL 90"
+                  width={40}
+                  height={40}
+                />
               </h1>
 
               <div className="relative hidden md:block">
