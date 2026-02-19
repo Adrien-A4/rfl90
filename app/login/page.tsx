@@ -34,7 +34,14 @@ const LoginPage = () => {
               transition={{ delay: 0.1 }}
               className="text-3xl font-bold tracking-tight mb-2"
             >
-              RFL <span className="text-muted-foreground/60">90'</span>
+              <Image
+                src="/logo.png"
+                draggable={false}
+                alt="RFL 90"
+                width={48}
+                height={48}
+              />
+              RFL <span className="text-white/40">90'</span>
             </motion.h1>
             <motion.p
               initial={{ y: -10, opacity: 0 }}

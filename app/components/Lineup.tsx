@@ -612,7 +612,13 @@ const Lineup = ({ compact = false }: LineupProps) => {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold">RFL 90' Lineup Builder</h2>
             <div className="w-10 h-10 bg-black-500 rounded-full flex items-center justify-center">
-              {/*addinglogo soon*/}
+              <Image
+                src="/logo.png"
+                draggable={false}
+                alt="RFL 90"
+                width={24}
+                height={24}
+              />
             </div>
           </div>
 

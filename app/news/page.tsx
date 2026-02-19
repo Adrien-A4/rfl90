@@ -84,7 +84,13 @@ const NewsPage = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-8">
               <a href="/" className="text-2xl font-bold tracking-tight">
-                RFL <span className="text-white/40">90'</span>
+                <Image
+                  src="/logo.png"
+                  draggable={false}
+                  alt="RFL 90"
+                  width={40}
+                  height={40}
+                />
               </a>
 
               <nav className="hidden md:flex items-center gap-6">
