@@ -1,4 +1,19 @@
-export type PlayerPosition = "GK" | "DEF" | "MID" | "FWD";
+export type PlayerPosition =
+  | "GK"
+  | "LB"
+  | "RB"
+  | "LWB"
+  | "RWB"
+  | "CB"
+  | "CDM"
+  | "CM"
+  | "CAM"
+  | "LM"
+  | "RM"
+  | "LW"
+  | "RW"
+  | "ST"
+  | "CF";
 
 export type MatchStatus = "scheduled" | "live" | "finished";
 
@@ -35,7 +50,7 @@ export interface Player {
   short_name: string;
   image: string;
   position: PlayerPosition;
-  rating: number;
+  tier: string;
   age: number;
   nationality: string;
   height: number;
@@ -43,6 +58,42 @@ export interface Player {
   jersey_number: number;
   contract_until: string;
   market_value: number;
+  transfer_value: number;
+  created_at: string;
+  total_points?: number;
+}
+
+export interface PlayerGameweekPoints {
+  id: string;
+  player_id: string;
+  gameweek: number;
+  points: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Gameweek {
+  id: string;
+  gameweek_number: number;
+  season: string;
+  start_date: string;
+  end_date: string;
+  deadline: string;
+  status: "upcoming" | "active" | "closed" | "completed";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TransferWindow {
+  id: string;
+  gameweek_id: string;
+  gameweek: number;
+  season: string;
+  start_date: string;
+  deadline: string;
+  end_date: string;
+  is_active: boolean;
+  free_transfers: number;
   created_at: string;
 }
 

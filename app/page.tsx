@@ -54,16 +54,7 @@ type News = {
   created_at: string;
 };
 
-const DEFAULT_LEAGUES: League[] = [
-  {
-    id: "ECL",
-    name: "English Elite Conference",
-    country: "England",
-    logo: "https://cdn.discordapp.com/emojis/1249053705681244170.webp?size=1024",
-  },
-];
-
-const RFL90 = () => {
+const RFL = () => {
   const [mounted, setMounted] = useState(false);
   const [selectedTab, setSelectedTab] = useState("ongoing");
   const [expandedLeague, setExpandedLeague] = useState("league-1");
@@ -252,11 +243,11 @@ const RFL90 = () => {
             <div className="flex items-center gap-8">
               <h1 className="text-2xl font-bold tracking-tight">
                 <Image
-                  src="/logo.png"
+                  src="/rff.png"
                   draggable={false}
-                  alt="RFL 90"
-                  width={40}
-                  height={40}
+                  alt="Real Futbol Fantasy"
+                  width={80}
+                  height={80}
                 />
               </h1>
 
@@ -272,23 +263,24 @@ const RFL90 = () => {
 
             <nav className="flex items-center gap-6">
               <a
-                href="/news"
-                className="text-sm font-medium text-white/80 hover:text-white transition-colors"
-              >
-                News
-              </a>
-              <a
                 href="/matches"
                 className="text-sm font-medium text-white/80 hover:text-white transition-colors"
               >
                 Matches
               </a>
               <a
-                href="/api/invite"
+                href="/fantasy"
                 className="text-sm font-medium text-white/80 hover:text-white transition-colors"
               >
-                Discord
+                Fantasy
               </a>
+              <a
+                href="/transfers"
+                className="text-sm font-medium text-white/80 hover:text-white transition-colors"
+              >
+                Transfers
+              </a>
+
               <div className="flex gap-1 ml-4 items-center">
                 <SettingsMenu />
               </div>
@@ -377,7 +369,7 @@ const RFL90 = () => {
                       : "text-muted-foreground/60 hover:text-foreground"
                   }`}
                 >
-                  On TV
+                  Live
                 </button>
                 <button
                   onClick={() => setSelectedTab("bytime")}
@@ -566,7 +558,25 @@ const RFL90 = () => {
                   </RedirectWithFadeButton>
                 </div>
               </div>
+              <div className="bg-card rounded-xl p-6 transition-colors duration-300">
+                <h3 className="font-semibold text-sm mb-4">
+                  Start your fantasy journey!
+                </h3>
+                <p className="text-sm text-white/40 mb-4">
+                  Build your dream team, compete with friends, and climb the
+                  ranks in our fantasy football league. Create your team now and
+                  join the fun!
+                </p>
 
+                <div className="flex">
+                  <RedirectWithFadeButton
+                    to="/fantasy"
+                    className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm transition-colors text-left"
+                  >
+                    Start Now!
+                  </RedirectWithFadeButton>
+                </div>
+              </div>
               <div className="bg-card rounded-xl p-6 transition-colors duration-300">
                 <h3 className="font-semibold text-sm mb-4">News</h3>
 
@@ -618,4 +628,4 @@ const RFL90 = () => {
   );
 };
 
-export default RFL90;
+export default RFL;

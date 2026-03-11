@@ -40,7 +40,8 @@ type Player = {
   image: string;
   team: string;
   position: "GK" | "DEF" | "MID" | "FWD";
-  rating?: number;
+  tier?: string;
+  total_points?: number;
 };
 
 const positionGroups: Record<number, "GK" | "DEF" | "MID" | "FWD"> = {
@@ -110,7 +111,8 @@ const Lineup = ({ compact = false }: LineupProps) => {
             team:
               typeof p.team === "string" ? p.team : p.team?.name || "Unknown",
             position: p.position,
-            rating: p.rating,
+            tier: p.tier,
+            total_points: p.total_points ?? 0,
           }));
           setDbPlayers(mappedPlayers);
         }
@@ -443,6 +445,12 @@ const Lineup = ({ compact = false }: LineupProps) => {
                         <div className="text-xs text-white/40">
                           {player.team}
                         </div>
+                        <div className="text-xs text-blue-400 font-medium">
+                          {player.tier ? `${player.tier}` : ""}{" "}
+                          {player.total_points
+                            ? `• ${player.total_points} pts`
+                            : ""}
+                        </div>
                       </div>
                       {!isCorrectPosition ? (
                         <span className="text-xs text-red-400">
@@ -610,14 +618,16 @@ const Lineup = ({ compact = false }: LineupProps) => {
       <div className="col-span-6">
         <div className="bg-[#1a1a1a] rounded-xl p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold">RFL 90' Lineup Builder</h2>
+            <h2 className="text-lg font-semibold">
+              Real Futbol Fantasy Lineup Builder
+            </h2>
             <div className="w-10 h-10 bg-black-500 rounded-full flex items-center justify-center">
               <Image
-                src="/logo.png"
+                src="/rffshort.png"
                 draggable={false}
-                alt="RFL 90"
-                width={24}
-                height={24}
+                alt="Real Futbol Fantasy"
+                width={100}
+                height={100}
               />
             </div>
           </div>
@@ -754,9 +764,24 @@ const Lineup = ({ compact = false }: LineupProps) => {
                                 className="object-cover"
                               />
                             </div>
-                            <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs text-white/60 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                              {lineup[pos].name}
+                            <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs text-white/60 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity bg-[#1a1a1a] px-2 py-1 rounded border border-white/10">
+                              <div>{lineup[pos].name}</div>
+                              {lineup[pos].tier && (
+                                <div className="text-blue-400">
+                                  Tier: {lineup[pos].tier}
+                                </div>
+                              )}
+                              {lineup[pos].total_points !== undefined && (
+                                <div className="text-green-400">
+                                  Points: {lineup[pos].total_points}
+                                </div>
+                              )}
                             </div>
+                            {lineup[pos].total_points !== undefined && (
+                              <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs text-green-400 whitespace-nowrap opacity-100 group-hover:opacity-0 transition-opacity">
+                                Points: {lineup[pos].total_points}
+                              </div>
+                            )}
                           </>
                         ) : (
                           <Plus className="w-5 h-5 text-white/40 group-hover:text-white transition-colors" />

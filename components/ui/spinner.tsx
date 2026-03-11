@@ -1,22 +1,148 @@
-import { LoaderIcon } from "lucide-react";
+import styled from "styled-components";
+import type { CSSProperties } from "react";
 
-import { cn } from "@/lib/utils";
+type SpinnerSize = "xs" | "sm" | "md" | "lg" | "s";
 
-type SpinnerProps = {
-  size?: number;
-} & React.HTMLAttributes<HTMLSpanElement>;
-
-function Spinner({ className, size = 4, ...props }: SpinnerProps) {
-  return (
-    <span
-      role="status"
-      aria-label="Loading"
-      className={cn("inline-flex items-center justify-center", className)}
-      {...props}
-    >
-      <LoaderIcon className={`size-${size} animate-spin`} />
-    </span>
-  );
+interface LoaderProps {
+  size?: SpinnerSize;
+  color?: string;
 }
 
-export { Spinner };
+const sizeMap: Record<SpinnerSize, number> = {
+  xs: 16,
+  s: 30,
+  sm: 36,
+  md: 54,
+  lg: 72,
+};
+
+const Loader = ({ size = "md", color = "rgb(128, 128, 128)" }: LoaderProps) => {
+  return (
+    <StyledWrapper
+      style={
+        {
+          "--spinner-size": `${sizeMap[size]}px`,
+          "--spinner-color": color,
+        } as CSSProperties
+      }
+    >
+      <div className="loader">
+        <div className="bar1" />
+        <div className="bar2" />
+        <div className="bar3" />
+        <div className="bar4" />
+        <div className="bar5" />
+        <div className="bar6" />
+        <div className="bar7" />
+        <div className="bar8" />
+        <div className="bar9" />
+        <div className="bar10" />
+        <div className="bar11" />
+        <div className="bar12" />
+      </div>
+    </StyledWrapper>
+  );
+};
+
+const StyledWrapper = styled.div`
+  --spinner-size: 54px;
+  --spinner-color: rgb(128, 128, 128);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  vertical-align: middle;
+
+  .loader {
+    position: relative;
+    display: block;
+    width: var(--spinner-size);
+    height: var(--spinner-size);
+    border-radius: 10px;
+  }
+
+  .loader div {
+    width: 8%;
+    height: 24%;
+    background: var(--spinner-color);
+    position: absolute;
+    left: 46%;
+    top: 38%;
+    opacity: 0;
+    border-radius: 50px;
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.2);
+    animation: fade458 1s linear infinite;
+  }
+
+  @keyframes fade458 {
+    from {
+      opacity: 1;
+    }
+
+    to {
+      opacity: 0.25;
+    }
+  }
+
+  .loader .bar1 {
+    transform: rotate(0deg) translate(0, -130%);
+    animation-delay: 0s;
+  }
+
+  .loader .bar2 {
+    transform: rotate(30deg) translate(0, -130%);
+    animation-delay: -1.1s;
+  }
+
+  .loader .bar3 {
+    transform: rotate(60deg) translate(0, -130%);
+    animation-delay: -1s;
+  }
+
+  .loader .bar4 {
+    transform: rotate(90deg) translate(0, -130%);
+    animation-delay: -0.9s;
+  }
+
+  .loader .bar5 {
+    transform: rotate(120deg) translate(0, -130%);
+    animation-delay: -0.8s;
+  }
+
+  .loader .bar6 {
+    transform: rotate(150deg) translate(0, -130%);
+    animation-delay: -0.7s;
+  }
+
+  .loader .bar7 {
+    transform: rotate(180deg) translate(0, -130%);
+    animation-delay: -0.6s;
+  }
+
+  .loader .bar8 {
+    transform: rotate(210deg) translate(0, -130%);
+    animation-delay: -0.5s;
+  }
+
+  .loader .bar9 {
+    transform: rotate(240deg) translate(0, -130%);
+    animation-delay: -0.4s;
+  }
+
+  .loader .bar10 {
+    transform: rotate(270deg) translate(0, -130%);
+    animation-delay: -0.3s;
+  }
+
+  .loader .bar11 {
+    transform: rotate(300deg) translate(0, -130%);
+    animation-delay: -0.2s;
+  }
+
+  .loader .bar12 {
+    transform: rotate(330deg) translate(0, -130%);
+    animation-delay: -0.1s;
+  }
+`;
+
+export default Loader;

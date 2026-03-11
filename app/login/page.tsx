@@ -32,16 +32,16 @@ const LoginPage = () => {
               initial={{ y: -10, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.1 }}
-              className="text-3xl font-bold tracking-tight mb-2"
+              className="text-3xl font-bold tracking-tight mb-2 flex flex-col items-center gap-4"
             >
               <Image
-                src="/logo.png"
+                src="/rff.png"
                 draggable={false}
-                alt="RFL 90"
-                width={48}
-                height={48}
+                alt="Real Futbol Fantasy"
+                width={300}
+                height={300}
               />
-              RFL <span className="text-white/40">90'</span>
+              Real Futbol Fantasy
             </motion.h1>
             <motion.p
               initial={{ y: -10, opacity: 0 }}
@@ -74,7 +74,7 @@ const LoginPage = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
-            className="text-center text-xs text-muted-foreground/40 mt-6"
+            className="text-center text-xs flex text-nowrap text-muted-foreground/40 mt-6"
           >
             By continuing, you agree to our Terms of Service and Privacy Policy
           </motion.p>

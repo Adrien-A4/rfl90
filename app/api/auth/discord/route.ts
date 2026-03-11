@@ -115,7 +115,7 @@ export async function GET(req: Request) {
                 components: [
                   {
                     type: 10,
-                    content: `Nice, you've successfully logged in! Welcome to RFL 90', <@${user.id}>!`,
+                    content: `Nice, you've successfully logged in! Welcome to Real Futbol Fantasy, <@${user.id}>!`,
                   },
                 ],
               },

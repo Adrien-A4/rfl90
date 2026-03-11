@@ -14,8 +14,21 @@ export interface Player {
   shortName: string;
   image: string;
   teamId: string;
-  position: "GK" | "DEF" | "MID" | "FWD";
-  rating: number;
+  position:
+    | "GK"
+    | "LWB"
+    | "RWB"
+    | "CB"
+    | "CDM"
+    | "CM"
+    | "CAM"
+    | "LM"
+    | "RM"
+    | "LW"
+    | "RW"
+    | "ST"
+    | "CF";
+  tier: string;
   age: number;
   nationality: string;
   createdAt: number;

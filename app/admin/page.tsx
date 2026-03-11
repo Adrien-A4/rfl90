@@ -1,5 +1,6 @@
 "use client";
-import { Spinner } from "@/components/ui/spinner";
+import Loader from "@/components/ui/spinner";
+import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -16,10 +17,16 @@ import {
   FileText,
 } from "lucide-react";
 import { useToast } from "@/components/ui/sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Select } from "./components/Select";
 import { NumberInput } from "./components/NumberInput";
 
-type Tab = "teams" | "players" | "matches" | "leagues" | "news";
+type Tab = "teams" | "players" | "matches" | "leagues" | "news" | "gameweeks";
 
 interface AuthUser {
   id: string;
@@ -54,9 +61,11 @@ interface Player {
   image: string;
   team_id: string;
   position: string;
-  rating: number;
+  tier: string;
   age: number;
   nationality: string;
+  market_value?: number;
+  transfer_value?: number;
 }
 
 interface Match {
@@ -69,6 +78,16 @@ interface Match {
   competition: string;
   round: string;
   scheduled_at: string;
+}
+
+interface Gameweek {
+  id: string;
+  gameweek_number: number;
+  season: string;
+  start_date: string;
+  end_date: string;
+  deadline: string;
+  status: string;
 }
 
 interface News {
@@ -92,17 +111,53 @@ export default function AdminPage() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [news, setNews] = useState<News[]>([]);
+  const [gameweeks, setGameweeks] = useState<Gameweek[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<{
+    id: string;
+    type: Tab;
+  } | null>(null);
   const [editingItem, setEditingItem] = useState<
-    Team | Player | Match | League | News | null
+    Team | Player | Match | League | News | Gameweek | null
   >(null);
   const [formData, setFormData] = useState<
     Record<string, string | number | boolean | null>
   >({});
+  const [currentGameweek, setCurrentGameweek] = useState<number>(1);
+  const [gameweekPoints, setGameweekPoints] = useState<Record<string, number>>(
+    {},
+  );
+  const [loadingPoints, setLoadingPoints] = useState(false);
+
+  const parseTransferValue = (value: string): number => {
+    if (!value) return 0;
+    const upper = value.toUpperCase().trim();
+    let multiplier = 1;
+
+    if (upper.endsWith("M")) {
+      multiplier = 1000000;
+    } else if (upper.endsWith("K")) {
+      multiplier = 1000;
+    }
+
+    const num = parseFloat(upper.replace(/[MK]/g, ""));
+    if (isNaN(num)) return 0;
+
+    return Math.round(num * multiplier);
+  };
+
+  const formatTransferValue = (value: number): string => {
+    if (value >= 1000000) {
+      return (value / 1000000).toFixed(1).replace(/\.0$/, "") + "m";
+    } else if (value >= 1000) {
+      return (value / 1000).toFixed(0) + "k";
+    }
+    return value.toString();
+  };
 
   useEffect(() => {
     checkAuth();
@@ -140,21 +195,29 @@ export default function AdminPage() {
     if (!isAuthenticated || !isAdmin) return;
 
     try {
-      const [teamsRes, playersRes, matchesRes, leaguesRes, newsRes] =
-        await Promise.all([
-          fetch("/api/admin/teams"),
-          fetch("/api/admin/players"),
-          fetch("/api/admin/matches"),
-          fetch("/api/admin/leagues"),
-          fetch("/api/admin/news"),
-        ]);
+      const [
+        teamsRes,
+        playersRes,
+        matchesRes,
+        leaguesRes,
+        newsRes,
+        gameweeksRes,
+      ] = await Promise.all([
+        fetch("/api/admin/teams"),
+        fetch("/api/admin/players"),
+        fetch("/api/admin/matches"),
+        fetch("/api/admin/leagues"),
+        fetch("/api/admin/news"),
+        fetch("/api/admin/gameweeks"),
+      ]);
 
       if (
         !teamsRes.ok ||
         !playersRes.ok ||
         !matchesRes.ok ||
         !leaguesRes.ok ||
-        !newsRes.ok
+        !newsRes.ok ||
+        !gameweeksRes.ok
       ) {
         throw new Error("One or more API calls failed");
       }
@@ -164,11 +227,13 @@ export default function AdminPage() {
       const matchesData = await matchesRes.json();
       const leaguesData = await leaguesRes.json();
       const newsData = await newsRes.json();
+      const gameweeksData = await gameweeksRes.json();
       setTeams(teamsData.teams || []);
       setPlayers(playersData.players || []);
       setMatches(matchesData.matches || []);
       setLeagues(leaguesData.leagues || []);
       setNews(newsData.news || []);
+      setGameweeks(gameweeksData.gameweeks || []);
     } catch (err) {
       console.error("Failed to fetch data:", err);
       toast({
@@ -187,6 +252,37 @@ export default function AdminPage() {
     }
   }, [isAuthenticated, isAdmin]);
 
+  useEffect(() => {
+    if (activeTab === "players" && isAuthenticated && isAdmin) {
+      fetchGameweekPoints();
+    }
+  }, [currentGameweek, activeTab, isAuthenticated, isAdmin]);
+
+  const fetchGameweekPoints = async () => {
+    setLoadingPoints(true);
+    try {
+      const pointsData: Record<string, number> = {};
+
+      for (const player of players) {
+        const res = await fetch(
+          `/api/admin/player-points?playerId=${player.id}&gameweek=${currentGameweek}`,
+        );
+        const data = await res.json();
+        if (data.points && data.points.length > 0) {
+          pointsData[player.id] = data.points[0].points;
+        } else {
+          pointsData[player.id] = 0;
+        }
+      }
+
+      setGameweekPoints(pointsData);
+    } catch (err) {
+      console.error("Failed to fetch gameweek points:", err);
+    } finally {
+      setLoadingPoints(false);
+    }
+  };
+
   const handleAdd = (type: Tab) => {
     setEditingItem(null);
     setFormData({});
@@ -194,7 +290,7 @@ export default function AdminPage() {
   };
 
   const handleEdit = (
-    item: Team | Player | Match | League | News,
+    item: Team | Player | Match | League | News | Gameweek,
     type: Tab,
   ) => {
     setEditingItem(item);
@@ -229,9 +325,13 @@ export default function AdminPage() {
         image: player.image,
         teamId: player.team_id,
         position: player.position,
-        rating: player.rating,
+        tier: player.tier,
         age: player.age,
         nationality: player.nationality,
+        marketValue: player.market_value ?? 0,
+        transferValue: formatTransferValue(player.transfer_value ?? 0),
+        transferValueRaw: player.transfer_value ?? 0,
+        gameweekPoints: gameweekPoints[player.id] ?? 0,
       });
     } else if (type === "matches") {
       const match = item as Match;
@@ -258,14 +358,30 @@ export default function AdminPage() {
         isPublished: newsItem.is_published,
         publishedAt: newsItem.published_at,
       });
+    } else if (type === "gameweeks") {
+      const gw = item as Gameweek;
+      setFormData({
+        id: gw.id,
+        gameweekNumber: gw.gameweek_number,
+        season: gw.season,
+        startDate: gw.start_date,
+        endDate: gw.end_date,
+        deadline: gw.deadline,
+        status: gw.status,
+      });
     }
 
     setModalOpen(true);
   };
 
   const handleDelete = async (id: string, type: Tab) => {
-    if (!confirm(`Are you sure you want to delete this ${type.slice(0, -1)}?`))
-      return;
+    setShowDeleteConfirm({ id, type });
+  };
+
+  const confirmDelete = async () => {
+    if (!showDeleteConfirm) return;
+
+    const { id, type } = showDeleteConfirm;
 
     try {
       const res = await fetch(`/api/admin/${type.slice(0, -1)}s?id=${id}`, {
@@ -285,6 +401,8 @@ export default function AdminPage() {
         description: "Failed to delete",
         variant: "destructive",
       });
+    } finally {
+      setShowDeleteConfirm(null);
     }
   };
 
@@ -321,9 +439,13 @@ export default function AdminPage() {
           image: formData.image,
           teamId: formData.teamId,
           position: formData.position,
-          rating: formData.rating,
+          tier: formData.tier,
           age: formData.age,
           nationality: formData.nationality,
+          marketValue: formData.marketValue,
+          transferValue: formData.transferValueRaw
+            ? parseFloat(formData.transferValueRaw as string)
+            : parseTransferValue(String(formData.transferValue)),
         };
       } else if (type === "matches") {
         body = {
@@ -348,6 +470,16 @@ export default function AdminPage() {
           is_published: formData.isPublished,
           published_at: formData.publishedAt,
         };
+      } else if (type === "gameweeks") {
+        body = {
+          id: formData.id,
+          gameweekNumber: formData.gameweekNumber,
+          season: formData.season,
+          startDate: formData.startDate,
+          endDate: formData.endDate,
+          deadline: formData.deadline,
+          status: formData.status,
+        };
       }
 
       const res = await fetch(
@@ -359,14 +491,56 @@ export default function AdminPage() {
         },
       );
 
+      let savedPlayerId = formData.id;
+
       if (res.ok) {
+        const resData = await res.json();
+        if (!isEditing && type === "players" && resData.player?.id) {
+          savedPlayerId = resData.player.id;
+        }
+
+        if (
+          type === "players" &&
+          formData.gameweekPoints !== undefined &&
+          savedPlayerId
+        ) {
+          try {
+            await fetch("/api/admin/player-points", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                playerId: savedPlayerId,
+                gameweek: currentGameweek,
+                points: formData.gameweekPoints,
+              }),
+            });
+          } catch (err) {
+            console.error("Failed to save gameweek points:", err);
+          }
+        }
+
         fetchData();
         setModalOpen(false);
+
+        let itemName = "";
+        if (type === "teams") itemName = formData.name as string;
+        else if (type === "leagues") itemName = formData.name as string;
+        else if (type === "players") itemName = formData.name as string;
+        else if (type === "matches")
+          itemName = `${formData.homeTeamId} vs ${formData.awayTeamId}`;
+        else if (type === "news") itemName = formData.title as string;
+        else if (type === "gameweeks")
+          itemName = `GW ${formData.gameweekNumber}`;
+
         toast({
           title: "Success",
           description: isEditing
-            ? `${type.slice(0, -1)} updated successfully`
-            : `${type === "news" ? "News article" : type.slice(0, -1)} created successfully`,
+            ? itemName
+              ? `${itemName} updated successfully`
+              : `${type.slice(0, -1)} updated successfully`
+            : itemName
+              ? `${itemName} created successfully`
+              : `${type === "news" ? "News article" : type.slice(0, -1)} created successfully`,
           variant: "success",
         });
       } else {
@@ -388,8 +562,8 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#D3D3D3] flex items-center justify-center">
-        <Spinner size={8} />
+      <div className="min-h-screen bg-[#0d0d0d] flex items-center justify-center">
+        <Loader size="sm" />
       </div>
     );
   }
@@ -437,6 +611,13 @@ export default function AdminPage() {
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
+            <Image
+              src="/rffshort.png"
+              draggable={false}
+              alt="Real Futbol Fantasy"
+              width={80}
+              height={80}
+            />
             <h1 className="text-2xl font-bold text-white">Admin Panel</h1>
             {user && (
               <div className="flex items-center gap-2 px-3 py-1 bg-[#1a1a1a] rounded-full">
@@ -466,7 +647,9 @@ export default function AdminPage() {
                   ? "League"
                   : activeTab === "news"
                     ? "News"
-                    : activeTab.slice(0, -1)}
+                    : activeTab === "gameweeks"
+                      ? "Gameweek"
+                      : activeTab.slice(0, -1)}
             </button>
           </div>
         </div>
@@ -478,6 +661,7 @@ export default function AdminPage() {
             { id: "players", label: "Players", icon: Users },
             { id: "matches", label: "Matches", icon: Calendar },
             { id: "news", label: "News", icon: FileText },
+            { id: "gameweeks", label: "Gameweeks", icon: Calendar },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -691,6 +875,28 @@ export default function AdminPage() {
               exit={{ opacity: 0, y: -20 }}
               className="bg-[#1a1a1a] rounded-xl overflow-hidden"
             >
+              <div className="p-4 border-b border-white/10 flex items-center gap-4">
+                <label className="text-sm text-white/60">
+                  Select Gameweek:
+                </label>
+                <div className="w-40">
+                  <Select
+                    value={currentGameweek.toString()}
+                    onChange={(value) => setCurrentGameweek(parseInt(value))}
+                    options={
+                      gameweeks.length > 0
+                        ? gameweeks.map((gw) => ({
+                            value: gw.gameweek_number.toString(),
+                            label: `GW ${gw.gameweek_number}`,
+                          }))
+                        : Array.from({ length: 15 }, (_, i) => ({
+                            value: (i + 1).toString(),
+                            label: `Gameweek ${i + 1}`,
+                          }))
+                    }
+                  />
+                </div>
+              </div>
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-white/10">
@@ -704,7 +910,13 @@ export default function AdminPage() {
                       Position
                     </th>
                     <th className="text-left p-4 text-white/60 font-medium">
-                      Rating
+                      Tier
+                    </th>
+                    <th className="text-left p-4 text-white/60 font-medium">
+                      Transfer Value
+                    </th>
+                    <th className="text-left p-4 text-white/60 font-medium">
+                      GW {currentGameweek} Points
                     </th>
                     <th className="text-right p-4 text-white/60 font-medium">
                       Actions
@@ -783,7 +995,23 @@ export default function AdminPage() {
                             {player.position}
                           </span>
                         </td>
-                        <td className="p-4 text-white/60">{player.rating}</td>
+                        <td className="p-4 text-white/60">
+                          {player.tier ? `${player.tier} Class` : "No Tier"}
+                        </td>
+                        <td className="p-4">
+                          <span className="px-3 py-1 rounded-lg bg-purple-900/30 text-purple-400 font-medium">
+                            {player.transfer_value
+                              ? `${(player.transfer_value / 1000000).toFixed(1)}M`
+                              : player.market_value
+                                ? `${(player.market_value / 1000000).toFixed(1)}M`
+                                : "Free"}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <span className="px-3 py-1 rounded-lg bg-blue-900/30 text-blue-400 font-medium">
+                            {gameweekPoints[player.id] ?? 0}
+                          </span>
+                        </td>
                         <td className="p-4 text-right">
                           <div className="flex justify-end gap-2">
                             <button
@@ -1064,6 +1292,100 @@ export default function AdminPage() {
               )}
             </motion.div>
           )}
+
+          {activeTab === "gameweeks" && (
+            <motion.div
+              key="gameweeks"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="bg-[#1a1a1a] rounded-xl overflow-hidden"
+            >
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-white/10">
+                    <th className="text-left p-4 text-white/60 font-medium">
+                      GW #
+                    </th>
+                    <th className="text-left p-4 text-white/60 font-medium">
+                      Season
+                    </th>
+                    <th className="text-left p-4 text-white/60 font-medium">
+                      Start Date
+                    </th>
+                    <th className="text-left p-4 text-white/60 font-medium">
+                      End Date
+                    </th>
+                    <th className="text-left p-4 text-white/60 font-medium">
+                      Deadline
+                    </th>
+                    <th className="text-left p-4 text-white/60 font-medium">
+                      Status
+                    </th>
+                    <th className="text-right p-4 text-white/60 font-medium">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {gameweeks.map((gw) => (
+                    <tr
+                      key={gw.id}
+                      className="border-b border-white/5 hover:bg-white/5"
+                    >
+                      <td className="p-4 text-white font-medium">
+                        GW {gw.gameweek_number}
+                      </td>
+                      <td className="p-4 text-white/60">{gw.season}</td>
+                      <td className="p-4 text-white/60">
+                        {new Date(gw.start_date).toLocaleDateString()}
+                      </td>
+                      <td className="p-4 text-white/60">
+                        {new Date(gw.end_date).toLocaleDateString()}
+                      </td>
+                      <td className="p-4 text-white/60">
+                        {new Date(gw.deadline).toLocaleString()}
+                      </td>
+                      <td className="p-4">
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-medium ${
+                            gw.status === "active"
+                              ? "bg-green-600/20 text-green-400"
+                              : gw.status === "completed"
+                                ? "bg-gray-600/20 text-gray-400"
+                                : "bg-yellow-600/20 text-yellow-400"
+                          }`}
+                        >
+                          {gw.status}
+                        </span>
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => handleEdit(gw, "gameweeks")}
+                            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                          >
+                            <Edit className="w-4 h-4 text-white/40" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(gw.id, "gameweeks")}
+                            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-400" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {gameweeks.length === 0 && (
+                <div className="p-8 text-center text-white/40">
+                  No gameweeks added yet. Click "Add Gameweek" to get started.
+                </div>
+              )}
+            </motion.div>
+          )}
         </AnimatePresence>
 
         <AnimatePresence>
@@ -1081,6 +1403,12 @@ export default function AdminPage() {
                 exit={{ scale: 0.95, opacity: 0 }}
                 className="bg-[#1a1a1a] rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSubmit(activeTab);
+                  }
+                }}
+                tabIndex={-1}
               >
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-white">
@@ -1307,23 +1635,41 @@ export default function AdminPage() {
                             options={[
                               { value: "", label: "Select Position" },
                               { value: "GK", label: "Goalkeeper" },
-                              { value: "DEF", label: "Defender" },
-                              { value: "MID", label: "Midfielder" },
-                              { value: "FWD", label: "Forward" },
+                              { value: "CB", label: "Centre-Back" },
+                              { value: "LB", label: "Left-Back" },
+                              { value: "RB", label: "Right-Back" },
+                              { value: "DEF", label: "Defender (Generic)" },
+                              { value: "CDM", label: "Defensive Midfielder" },
+                              { value: "CM", label: "Centre Midfielder" },
+                              { value: "CAM", label: "Attacking Midfielder" },
+                              { value: "LM", label: "Left Midfielder" },
+                              { value: "RM", label: "Right Midfielder" },
+                              { value: "MID", label: "Midfielder (Generic)" },
+                              { value: "LW", label: "Left Wing" },
+                              { value: "RW", label: "Right Wing" },
+                              { value: "ST", label: "Striker" },
+                              { value: "CF", label: "Centre Forward" },
+                              { value: "FWD", label: "Forward (Generic)" },
                             ]}
                           />
                         </div>
                         <div>
                           <label className="block text-sm text-white/60 mb-1">
-                            Rating
+                            Tier
                           </label>
-                          <NumberInput
-                            value={(formData.rating as number) ?? 75}
-                            onChange={(val) =>
-                              setFormData({ ...formData, rating: val })
+                          <Select
+                            value={(formData.tier as string) || ""}
+                            onChange={(value) =>
+                              setFormData({ ...formData, tier: value })
                             }
-                            min={1}
-                            max={99}
+                            options={[
+                              { value: "", label: "Select Tier" },
+                              { value: "X", label: "X Class" },
+                              { value: "S", label: "S Class" },
+                              { value: "B", label: "B Class" },
+                              { value: "C", label: "C Class" },
+                              { value: "D", label: "D Class" },
+                            ]}
                           />
                         </div>
                       </div>
@@ -1392,6 +1738,154 @@ export default function AdminPage() {
                             })
                           }
                           className="w-full px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg focus:outline-none focus:border-white/20 transition-all text-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm text-white/60 mb-1">
+                          Gameweek {currentGameweek} Points
+                        </label>
+                        <NumberInput
+                          value={(formData.gameweekPoints as number) ?? 0}
+                          onChange={(val) =>
+                            setFormData({ ...formData, gameweekPoints: val })
+                          }
+                          min={0}
+                          max={999}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm text-white/60 mb-1">
+                          Transfer Value (e.g., 100k, 1m, 10m)
+                        </label>
+                        <input
+                          type="text"
+                          value={(formData.transferValue as string) || ""}
+                          onChange={(e) => {
+                            const val = parseTransferValue(e.target.value);
+                            setFormData({
+                              ...formData,
+                              transferValue: formatTransferValue(val),
+                              transferValueRaw: val,
+                            });
+                          }}
+                          placeholder="100k, 500k, 1m, 10m..."
+                          className="w-full px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg focus:outline-none focus:border-white/20 transition-all text-white text-lg"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {activeTab === "gameweeks" && (
+                    <>
+                      <div>
+                        <label className="block text-sm text-white/60 mb-1">
+                          Gameweek Number (1-15)
+                        </label>
+                        <NumberInput
+                          value={(formData.gameweekNumber as number) ?? 1}
+                          onChange={(val) =>
+                            setFormData({ ...formData, gameweekNumber: val })
+                          }
+                          min={1}
+                          max={15}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-white/60 mb-1">
+                          Season
+                        </label>
+                        <input
+                          type="text"
+                          value={(formData.season as string) || "2025/2026"}
+                          onChange={(e) =>
+                            setFormData({ ...formData, season: e.target.value })
+                          }
+                          className="w-full px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg focus:outline-none focus:border-white/20 transition-all text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-white/60 mb-1">
+                          Start Date
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={
+                            formData.startDate
+                              ? formData.startDate.toString().slice(0, 16)
+                              : ""
+                          }
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              startDate: e.target.value
+                                ? new Date(e.target.value).toISOString()
+                                : null,
+                            })
+                          }
+                          className="w-full px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg focus:outline-none focus:border-white/20 transition-all text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-white/60 mb-1">
+                          End Date
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={
+                            formData.endDate
+                              ? formData.endDate.toString().slice(0, 16)
+                              : ""
+                          }
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              endDate: e.target.value
+                                ? new Date(e.target.value).toISOString()
+                                : null,
+                            })
+                          }
+                          className="w-full px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg focus:outline-none focus:border-white/20 transition-all text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-white/60 mb-1">
+                          Deadline (Friday)
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={
+                            formData.deadline
+                              ? formData.deadline.toString().slice(0, 16)
+                              : ""
+                          }
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              deadline: e.target.value
+                                ? new Date(e.target.value).toISOString()
+                                : null,
+                            })
+                          }
+                          className="w-full px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg focus:outline-none focus:border-white/20 transition-all text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-white/60 mb-1">
+                          Status
+                        </label>
+                        <Select
+                          value={(formData.status as string) || "upcoming"}
+                          onChange={(value) =>
+                            setFormData({ ...formData, status: value })
+                          }
+                          options={[
+                            { value: "upcoming", label: "Upcoming" },
+                            { value: "active", label: "Active" },
+                            { value: "closed", label: "Closed" },
+                            { value: "completed", label: "Completed" },
+                          ]}
                         />
                       </div>
                     </>
@@ -1509,6 +2003,34 @@ export default function AdminPage() {
                           }
                           className="w-full px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg focus:outline-none focus:border-white/20 transition-all text-white"
                         />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm text-white/60 mb-1">
+                            Home Difficulty (1-5)
+                          </label>
+                          <NumberInput
+                            value={(formData.homeDifficulty as number) ?? 3}
+                            onChange={(val) =>
+                              setFormData({ ...formData, homeDifficulty: val })
+                            }
+                            min={1}
+                            max={5}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm text-white/60 mb-1">
+                            Away Difficulty (1-5)
+                          </label>
+                          <NumberInput
+                            value={(formData.awayDifficulty as number) ?? 3}
+                            onChange={(val) =>
+                              setFormData({ ...formData, awayDifficulty: val })
+                            }
+                            min={1}
+                            max={5}
+                          />
+                        </div>
                       </div>
                       <div>
                         <label className="block text-sm text-white/60 mb-1">
@@ -1684,6 +2206,36 @@ export default function AdminPage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        <Dialog
+          open={!!showDeleteConfirm}
+          onOpenChange={(open) => !open && setShowDeleteConfirm(null)}
+        >
+          <DialogContent className="bg-[#1a1a1a] border-white/10 text-white">
+            <DialogHeader>
+              <DialogTitle>Confirm Delete</DialogTitle>
+            </DialogHeader>
+            <p className="text-white/70 py-4">
+              Are you sure you want to delete this{" "}
+              {showDeleteConfirm?.type.slice(0, -1)}? This action cannot be
+              undone.
+            </p>
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => setShowDeleteConfirm(null)}
+                className="flex-1 px-4 py-2 bg-white/5 rounded-lg text-white font-medium hover:bg-white/10 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 px-4 py-2 bg-red-600 rounded-lg text-white font-medium hover:bg-red-700 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

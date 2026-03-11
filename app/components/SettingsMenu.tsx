@@ -20,6 +20,12 @@ import {
 } from "lucide-react";
 
 import { useToast } from "@/components/ui/sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const languages = [
   { code: "en", name: "English", nativeName: "English" },
@@ -43,6 +49,12 @@ const oddsFormats = [
   { format: "american", name: "American (+250)" },
 ];
 
+const temperatureUnits = [
+  { code: "celsius", name: "Celsius (°C)" },
+  { code: "fahrenheit", name: "Fahrenheit (°F)" },
+  { code: "kelvin", name: "Kelvin (K)" },
+];
+
 type DiscordUser = {
   id: string;
   username: string;
@@ -60,7 +72,12 @@ export default function SettingsMenu() {
   const [currency, setCurrency] = useState("EUR");
   const [unit, setUnit] = useState("metric");
   const [oddsFormat, setOddsFormat] = useState("decimal");
+  const [temperature, setTemperature] = useState("celsius");
   const [languageOpen, setLanguageOpen] = useState(false);
+  const [currencyOpen, setCurrencyOpen] = useState(false);
+  const [unitOpen, setUnitOpen] = useState(false);
+  const [oddsOpen, setOddsOpen] = useState(false);
+  const [temperatureOpen, setTemperatureOpen] = useState(false);
   const [user, setUser] = useState<DiscordUser | null>(null);
   const [loading, setLoading] = useState(true);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -113,6 +130,12 @@ export default function SettingsMenu() {
     const storedOdds =
       typeof window !== "undefined" ? localStorage.getItem("oddsFormat") : null;
     if (storedOdds) setOddsFormat(storedOdds);
+
+    const storedTemperature =
+      typeof window !== "undefined"
+        ? localStorage.getItem("temperatureUnit")
+        : null;
+    if (storedTemperature) setTemperature(storedTemperature);
   }, []);
 
   useEffect(() => {
@@ -147,6 +170,10 @@ export default function SettingsMenu() {
   }, [oddsFormat]);
 
   useEffect(() => {
+    localStorage.setItem("temperatureUnit", temperature);
+  }, [temperature]);
+
+  useEffect(() => {
     function onClick(e: MouseEvent) {
       if (!menuRef.current) return;
       if (e.target instanceof Node && !menuRef.current.contains(e.target))
@@ -155,6 +182,16 @@ export default function SettingsMenu() {
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
+
+  useEffect(() => {
+    if (!open) {
+      setLanguageOpen(false);
+      setCurrencyOpen(false);
+      setUnitOpen(false);
+      setOddsOpen(false);
+      setTemperatureOpen(false);
+    }
+  }, [open]);
 
   const handleLanguageChange = (lang: string) => {
     if (lang !== "en") {
@@ -400,27 +437,223 @@ export default function SettingsMenu() {
             <div className="px-1">
               <div className="text-xs text-white/40 mb-2 px-2">Preferences</div>
               <div className="space-y-1">
-                <Item
-                  icon={<DollarSign className="w-4 h-4" />}
-                  active={currency === "EUR"}
+                <div
+                  onMouseEnter={() => setCurrencyOpen(true)}
+                  onMouseLeave={() => setCurrencyOpen(false)}
                 >
-                  Euro (EUR)
-                </Item>
-                <Item
-                  icon={<Ruler className="w-4 h-4" />}
-                  active={unit === "metric"}
+                  <DropdownMenu
+                    open={currencyOpen}
+                    onOpenChange={setCurrencyOpen}
+                  >
+                    <DropdownMenuTrigger asChild>
+                      <button className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-white/5 transition-all duration-200">
+                        <span className="w-5 h-5 flex items-center justify-center text-white/60">
+                          <DollarSign className="w-4 h-4" />
+                        </span>
+                        <span className="flex-1 text-left text-sm text-white/80">
+                          Currency
+                        </span>
+                        <span className="text-xs text-white/40">
+                          {
+                            currencies.find((c) => c.code === currency)
+                              ?.name
+                          }
+                        </span>
+                        <motion.div
+                          animate={{
+                            rotate: currencyOpen ? 90 : 0,
+                            scaleX: dir === "rtl" ? -1 : 1,
+                          }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <ChevronRight className="w-4 h-4 text-white/40" />
+                        </motion.div>
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="start"
+                      side={dir === "rtl" ? "right" : "left"}
+                      className="w-48 bg-[#1a1a1a] border border-white/6 text-white"
+                    >
+                      {currencies.map((option) => (
+                        <DropdownMenuItem
+                          key={option.code}
+                          onSelect={() => setCurrency(option.code)}
+                          className={`justify-between ${
+                            currency === option.code ? "bg-white/10" : ""
+                          }`}
+                        >
+                          <span className="text-sm">
+                            {option.name} ({option.code})
+                          </span>
+                          {currency === option.code && (
+                            <Check className="w-4 h-4 text-white/60" />
+                          )}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                <div
+                  onMouseEnter={() => setUnitOpen(true)}
+                  onMouseLeave={() => setUnitOpen(false)}
                 >
-                  Metric (cm)
-                </Item>
-                <Item
-                  icon={<Percent className="w-4 h-4" />}
-                  active={oddsFormat === "decimal"}
+                  <DropdownMenu open={unitOpen} onOpenChange={setUnitOpen}>
+                    <DropdownMenuTrigger asChild>
+                      <button className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-white/5 transition-all duration-200">
+                        <span className="w-5 h-5 flex items-center justify-center text-white/60">
+                          <Ruler className="w-4 h-4" />
+                        </span>
+                        <span className="flex-1 text-left text-sm text-white/80">
+                          Units
+                        </span>
+                        <span className="text-xs text-white/40">
+                          {units.find((u) => u.code === unit)?.name}
+                        </span>
+                        <motion.div
+                          animate={{
+                            rotate: unitOpen ? 90 : 0,
+                            scaleX: dir === "rtl" ? -1 : 1,
+                          }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <ChevronRight className="w-4 h-4 text-white/40" />
+                        </motion.div>
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="start"
+                      side={dir === "rtl" ? "right" : "left"}
+                      className="w-52 bg-[#1a1a1a] border border-white/6 text-white"
+                    >
+                      {units.map((option) => (
+                        <DropdownMenuItem
+                          key={option.code}
+                          onSelect={() => setUnit(option.code)}
+                          className={`justify-between ${
+                            unit === option.code ? "bg-white/10" : ""
+                          }`}
+                        >
+                          <span className="text-sm">{option.name}</span>
+                          {unit === option.code && (
+                            <Check className="w-4 h-4 text-white/60" />
+                          )}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                <div
+                  onMouseEnter={() => setOddsOpen(true)}
+                  onMouseLeave={() => setOddsOpen(false)}
                 >
-                  Odds format - 3.50
-                </Item>
-                <Item icon={<Thermometer className="w-4 h-4" />} active={true}>
-                  Celsius (°C)
-                </Item>
+                  <DropdownMenu open={oddsOpen} onOpenChange={setOddsOpen}>
+                    <DropdownMenuTrigger asChild>
+                      <button className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-white/5 transition-all duration-200">
+                        <span className="w-5 h-5 flex items-center justify-center text-white/60">
+                          <Percent className="w-4 h-4" />
+                        </span>
+                        <span className="flex-1 text-left text-sm text-white/80">
+                          Odds format
+                        </span>
+                        <span className="text-xs text-white/40">
+                          {
+                            oddsFormats.find((o) => o.format === oddsFormat)
+                              ?.name
+                          }
+                        </span>
+                        <motion.div
+                          animate={{
+                            rotate: oddsOpen ? 90 : 0,
+                            scaleX: dir === "rtl" ? -1 : 1,
+                          }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <ChevronRight className="w-4 h-4 text-white/40" />
+                        </motion.div>
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="start"
+                      side={dir === "rtl" ? "right" : "left"}
+                      className="w-56 bg-[#1a1a1a] border border-white/6 text-white"
+                    >
+                      {oddsFormats.map((option) => (
+                        <DropdownMenuItem
+                          key={option.format}
+                          onSelect={() => setOddsFormat(option.format)}
+                          className={`justify-between ${
+                            oddsFormat === option.format ? "bg-white/10" : ""
+                          }`}
+                        >
+                          <span className="text-sm">{option.name}</span>
+                          {oddsFormat === option.format && (
+                            <Check className="w-4 h-4 text-white/60" />
+                          )}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                <div
+                  onMouseEnter={() => setTemperatureOpen(true)}
+                  onMouseLeave={() => setTemperatureOpen(false)}
+                >
+                  <DropdownMenu
+                    open={temperatureOpen}
+                    onOpenChange={setTemperatureOpen}
+                  >
+                    <DropdownMenuTrigger asChild>
+                      <button className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-white/5 transition-all duration-200">
+                        <span className="w-5 h-5 flex items-center justify-center text-white/60">
+                          <Thermometer className="w-4 h-4" />
+                        </span>
+                        <span className="flex-1 text-left text-sm text-white/80">
+                          Temperature
+                        </span>
+                        <span className="text-xs text-white/40">
+                          {
+                            temperatureUnits.find(
+                              (t) => t.code === temperature,
+                            )?.name
+                          }
+                        </span>
+                        <motion.div
+                          animate={{
+                            rotate: temperatureOpen ? 90 : 0,
+                            scaleX: dir === "rtl" ? -1 : 1,
+                          }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <ChevronRight className="w-4 h-4 text-white/40" />
+                        </motion.div>
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="start"
+                      side={dir === "rtl" ? "right" : "left"}
+                      className="w-52 bg-[#1a1a1a] border border-white/6 text-white"
+                    >
+                      {temperatureUnits.map((option) => (
+                        <DropdownMenuItem
+                          key={option.code}
+                          onSelect={() => setTemperature(option.code)}
+                          className={`justify-between ${
+                            temperature === option.code ? "bg-white/10" : ""
+                          }`}
+                        >
+                          <span className="text-sm">{option.name}</span>
+                          {temperature === option.code && (
+                            <Check className="w-4 h-4 text-white/60" />
+                          )}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
             </div>
           </motion.div>

@@ -15,7 +15,7 @@ export async function GET(req: Request) {
         team:teams!players_team_id_fkey (id, name, short_name, logo, primary_color, secondary_color)
       `,
       )
-      .order("rating", { ascending: false });
+      .order("name", { ascending: true });
 
     if (teamId) {
       query = query.eq("team_id", teamId);
@@ -24,7 +24,28 @@ export async function GET(req: Request) {
     const { data, error } = await query;
     if (error) throw error;
 
-    return NextResponse.json({ players: data });
+    // Fetch total points for each player
+    const playersWithPoints = await Promise.all(
+      (data || []).map(async (player) => {
+        const { data: pointsData } = await supabase
+          .from("player_gameweek_points")
+          .select("points")
+          .eq("player_id", player.id);
+
+        const totalPoints =
+          pointsData?.reduce(
+            (sum: number, record: { points: number }) => sum + record.points,
+            0,
+          ) || 0;
+
+        return {
+          ...player,
+          total_points: totalPoints,
+        };
+      }),
+    );
+
+    return NextResponse.json({ players: playersWithPoints });
   } catch (err) {
     console.error("Error fetching players:", err);
     return NextResponse.json(
@@ -44,7 +65,7 @@ export async function POST(req: Request) {
       short_name: body.shortName || body.name.substring(0, 2).toUpperCase(),
       image: body.image ?? "/noFilter.png",
       position: body.position,
-      rating: body.rating || 75,
+      tier: body.tier || "B",
       age: body.age || 25,
       nationality: body.nationality || "Unknown",
       height: body.height || null,
@@ -52,6 +73,7 @@ export async function POST(req: Request) {
       jersey_number: body.jerseyNumber || null,
       contract_until: body.contractUntil || null,
       market_value: body.marketValue || 0,
+      transfer_value: body.transferValue || 0,
     };
 
     const supabase = getServerSupabase();
@@ -91,12 +113,13 @@ export async function PUT(req: Request) {
       image: data.image,
       team_id: data.teamId,
       position: data.position,
-      rating: data.rating,
+      tier: data.tier,
       age: data.age,
       nationality: data.nationality,
       jersey_number: data.jerseyNumber,
       contract_until: data.contractUntil,
       market_value: data.marketValue,
+      transfer_value: data.transferValue,
     };
 
     const supabase = getServerSupabase();

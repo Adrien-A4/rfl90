@@ -1,41 +1,46 @@
--- Supabase Database Schema for RFL90 Football League Management
--- Run this in your Supabase SQL Editor
+-- Supabase Database Schema for Real Futbol Fantasy League Management
+-- REWRITTEN TO OVERWRITE EXISTING SCHEMA
 
--- Enable UUID extension
+-- 1. CLEANUP: Drop existing tables and types to avoid conflicts
+-- Drop Tables (Dependencies handled by CASCADE, order doesn't strictly matter but reverse-dependency is safer)
+DROP TABLE IF EXISTS user_gameweek_points CASCADE;
+DROP TABLE IF EXISTS user_transfers CASCADE;
+DROP TABLE IF EXISTS user_players CASCADE;
+DROP TABLE IF EXISTS user_teams CASCADE;
+DROP TABLE IF EXISTS gameweeks CASCADE;
+DROP TABLE IF EXISTS player_gameweek_points CASCADE;
+DROP TABLE IF EXISTS standings CASCADE;
+DROP TABLE IF EXISTS transfer_market CASCADE;
+DROP TABLE IF EXISTS transfers CASCADE;
+DROP TABLE IF EXISTS match_events CASCADE;
+DROP TABLE IF EXISTS matches CASCADE;
+DROP TABLE IF EXISTS players CASCADE;
+DROP TABLE IF EXISTS teams CASCADE;
+
+-- Drop Types
+DROP TYPE IF EXISTS gw_status CASCADE;
+DROP TYPE IF EXISTS squad_position CASCADE;
+DROP TYPE IF EXISTS transfer_status CASCADE;
+DROP TYPE IF EXISTS match_status CASCADE;
+DROP TYPE IF EXISTS player_position CASCADE;
+
+-- 2. SETUP: Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create Enum Types
-CREATE TYPE player_position AS ENUM ('GK', 'DEF', 'MID', 'FWD');
+CREATE TYPE player_position AS ENUM ('GK', 'LWB', 'RWB', 'CB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'ST', 'CF');
+CREATE TYPE specific_position AS ENUM ('GK', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'ST', 'CF');
 CREATE TYPE match_status AS ENUM ('scheduled', 'live', 'finished');
 CREATE TYPE transfer_status AS ENUM ('active', 'completed', 'cancelled');
+CREATE TYPE squad_position AS ENUM ('GK', 'LWB', 'RWB', 'CB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'ST', 'CF');
+CREATE TYPE gw_status AS ENUM ('upcoming', 'active', 'closed', 'completed');
 
--- Create Tables
+-- 4. CREATE TABLES
 
 -- Leagues Table
-CREATE TABLE leagues (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(100) NOT NULL,
-    short_name VARCHAR(10) NOT NULL,
-    logo TEXT,
-    country VARCHAR(50) NOT NULL,
-    tier INTEGER DEFAULT 1,
-    season VARCHAR(20) NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
 
 -- Teams Table
-CREATE TABLE teams (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    league_id UUID REFERENCES leagues(id) ON DELETE SET NULL,
-    name VARCHAR(100) NOT NULL,
-    short_name VARCHAR(10) NOT NULL,
-    logo TEXT,
-    primary_color VARCHAR(20) DEFAULT '#1a1a1a',
-    secondary_color VARCHAR(20) DEFAULT '#2a2a2a',
-    stadium VARCHAR(100),
-    founded_year INTEGER,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+
 
 -- Players Table
 CREATE TABLE players (
@@ -45,7 +50,8 @@ CREATE TABLE players (
     short_name VARCHAR(10) NOT NULL,
     image TEXT,
     position player_position NOT NULL,
-    rating INTEGER DEFAULT 75,
+    specific_position squad_position,
+    tier VARCHAR(1) DEFAULT 'B',
     age INTEGER DEFAULT 25,
     nationality VARCHAR(50) DEFAULT 'Unknown',
     height INTEGER,
@@ -53,6 +59,7 @@ CREATE TABLE players (
     jersey_number INTEGER,
     contract_until DATE,
     market_value DECIMAL(15, 2) DEFAULT 0,
+    transfer_value DECIMAL(15, 2) DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -70,6 +77,8 @@ CREATE TABLE matches (
     round VARCHAR(20) DEFAULT '1',
     venue VARCHAR(100),
     referee VARCHAR(100),
+    home_difficulty INTEGER DEFAULT 3,
+    away_difficulty INTEGER DEFAULT 3,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -128,7 +137,110 @@ CREATE TABLE standings (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Create Indexes for better query performance
+-- Player Gameweek Points Table
+CREATE TABLE player_gameweek_points (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    player_id UUID REFERENCES players(id) ON DELETE CASCADE,
+    gameweek INTEGER NOT NULL,
+    points INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(player_id, gameweek)
+);
+
+-- Gameweeks Table
+CREATE TABLE gameweeks (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    gameweek_number INTEGER NOT NULL UNIQUE,
+    season VARCHAR(20) NOT NULL,
+    start_date TIMESTAMPTZ NOT NULL,
+    end_date TIMESTAMPTZ NOT NULL,
+    deadline TIMESTAMPTZ NOT NULL,
+    status gw_status DEFAULT 'upcoming',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- User Teams Table
+-- Note: Created initially without captain references to avoid circular dependency
+CREATE TABLE user_teams (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id TEXT NOT NULL,
+    team_name VARCHAR(100) DEFAULT 'My Team',
+    budget DECIMAL(15, 2) DEFAULT 100000000,
+    formation VARCHAR(20) DEFAULT '4-4-2',
+    gameweek INTEGER DEFAULT 1,
+    total_points INTEGER DEFAULT 0,
+    rank INTEGER,
+    transfers_this_gw INTEGER DEFAULT 0,
+    transfer_penalty_points INTEGER DEFAULT 0,
+    -- captain_id and vice_captain_id added later via ALTER
+    season VARCHAR(20) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- User Players Table
+CREATE TABLE user_players (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_team_id UUID REFERENCES user_teams(id) ON DELETE CASCADE,
+    player_id UUID REFERENCES players(id) ON DELETE CASCADE,
+    squad_position squad_position NOT NULL,
+    slot_id VARCHAR(20),
+    is_starting BOOLEAN DEFAULT true,
+    position_in_squad INTEGER DEFAULT 0,
+    purchase_price DECIMAL(15, 2) DEFAULT 0,
+    purchase_gameweek INTEGER DEFAULT 1,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_team_id, player_id)
+);
+
+-- User Transfers Table
+CREATE TABLE user_transfers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_team_id UUID REFERENCES user_teams(id) ON DELETE CASCADE,
+    player_in_id UUID REFERENCES players(id) ON DELETE CASCADE,
+    player_out_id UUID REFERENCES players(id) ON DELETE CASCADE,
+    gameweek INTEGER NOT NULL,
+    transfer_cost DECIMAL(15, 2) DEFAULT 0,
+    points_deducted INTEGER DEFAULT 0,
+    is_free_transfer BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- User Gameweek Points Table
+CREATE TABLE user_gameweek_points (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_team_id UUID REFERENCES user_teams(id) ON DELETE CASCADE,
+    gameweek INTEGER NOT NULL,
+    points INTEGER DEFAULT 0,
+    rank INTEGER,
+    bench_points INTEGER DEFAULT 0,
+    captain_points INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_team_id, gameweek)
+);
+
+-- Transfer Windows Table
+CREATE TABLE transfer_windows (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    gameweek_id UUID REFERENCES gameweeks(id) ON DELETE CASCADE,
+    gameweek INTEGER NOT NULL,
+    season VARCHAR(20) NOT NULL,
+    start_date TIMESTAMPTZ NOT NULL,
+    deadline TIMESTAMPTZ NOT NULL,
+    end_date TIMESTAMPTZ NOT NULL,
+    is_active BOOLEAN DEFAULT false,
+    free_transfers INTEGER DEFAULT 1,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 5. POST-CREATION SCHEMA UPDATES
+-- Add Captain/Vice-Captain references now that user_players exists
+ALTER TABLE user_teams ADD COLUMN captain_id UUID REFERENCES user_players(id) ON DELETE SET NULL;
+ALTER TABLE user_teams ADD COLUMN vice_captain_id UUID REFERENCES user_players(id) ON DELETE SET NULL;
+
+-- 6. CREATE INDEXES
 CREATE INDEX idx_teams_league_id ON teams(league_id);
 CREATE INDEX idx_players_team_id ON players(team_id);
 CREATE INDEX idx_matches_league_id ON matches(league_id);
@@ -139,25 +251,51 @@ CREATE INDEX idx_transfers_player_id ON transfers(player_id);
 CREATE INDEX idx_transfer_market_player_id ON transfer_market(player_id);
 CREATE INDEX idx_standings_league_season ON standings(league_id, season);
 CREATE INDEX idx_matches_scheduled_at ON matches(scheduled_at);
+CREATE INDEX idx_player_gameweek_points_player ON player_gameweek_points(player_id);
+CREATE INDEX idx_player_gameweek_points_gameweek ON player_gameweek_points(gameweek);
+CREATE INDEX idx_gameweeks_number ON gameweeks(gameweek_number);
+CREATE INDEX idx_gameweeks_status ON gameweeks(status);
+CREATE INDEX idx_user_teams_user_id ON user_teams(user_id);
+CREATE INDEX idx_user_teams_season ON user_teams(season);
+CREATE INDEX idx_user_players_user_team_id ON user_players(user_team_id);
+CREATE INDEX idx_user_players_player_id ON user_players(player_id);
+CREATE INDEX idx_user_transfers_user_team_id ON user_transfers(user_team_id);
+CREATE INDEX idx_user_transfers_gameweek ON user_transfers(gameweek);
+CREATE INDEX idx_user_gameweek_points_user_team ON user_gameweek_points(user_team_id);
+CREATE INDEX idx_user_gameweek_points_gameweek ON user_gameweek_points(gameweek);
+CREATE INDEX idx_transfer_windows_gameweek ON transfer_windows(gameweek);
+CREATE INDEX idx_transfer_windows_season ON transfer_windows(season);
 
--- Create Trigger Functions
-
--- Function to update updated_at timestamp
+-- 7. CREATE TRIGGER FUNCTIONS
 CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
+RETURNS TRIGGER AS $$ BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
 END;
-$$ language 'plpgsql';
+ $$ language 'plpgsql';
 
--- Apply updated_at trigger to relevant tables
+-- Apply updated_at triggers
 CREATE TRIGGER update_standings_updated_at
     BEFORE UPDATE ON standings
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
--- Create View for Player Market Values with Teams
+CREATE TRIGGER update_player_gameweek_points_updated_at
+    BEFORE UPDATE ON player_gameweek_points
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_gameweeks_updated_at
+    BEFORE UPDATE ON gameweeks
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_user_teams_updated_at
+    BEFORE UPDATE ON user_teams
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- 8. CREATE VIEWS
 CREATE VIEW player_market_values AS
 SELECT 
     p.id,
@@ -165,7 +303,7 @@ SELECT
     p.short_name,
     p.image,
     p.position,
-    p.rating,
+    p.tier,
     p.age,
     p.nationality,
     p.team_id,
@@ -179,7 +317,6 @@ FROM players p
 LEFT JOIN teams t ON p.team_id = t.id
 LEFT JOIN transfer_market tm ON p.id = tm.player_id;
 
--- Create View for League Standings
 CREATE VIEW league_standings AS
 SELECT 
     s.id,
@@ -205,7 +342,6 @@ JOIN leagues l ON s.league_id = l.id
 JOIN teams t ON s.team_id = t.id
 ORDER BY s.position;
 
--- Create View for Upcoming Matches
 CREATE VIEW upcoming_matches AS
 SELECT 
     m.id,
@@ -234,30 +370,120 @@ JOIN teams at ON m.away_team_id = at.id
 WHERE m.status IN ('scheduled', 'live')
 ORDER BY m.scheduled_at ASC;
 
--- Enable Row Level Security (RLS)
+CREATE VIEW user_squad_details AS
+SELECT 
+    ut.id as user_team_id,
+    ut.user_id,
+    ut.team_name,
+    ut.budget,
+    ut.formation,
+    ut.gameweek as current_gameweek,
+    ut.total_points,
+    ut.rank,
+    ut.transfers_this_gw,
+    ut.transfer_penalty_points,
+    ut.season,
+    up.id as user_player_id,
+    up.squad_position,
+    up.is_starting,
+    up.position_in_squad,
+    up.purchase_price,
+    up.purchase_gameweek,
+    p.id as player_id,
+    p.name as player_name,
+    p.short_name as player_short_name,
+    p.image as player_image,
+    p.position as player_position,
+    p.tier as player_tier,
+    p.age as player_age,
+    p.nationality,
+    p.transfer_value,
+    t.name as player_team_name,
+    t.short_name as team_short_name,
+    t.logo as team_logo
+FROM user_teams ut
+JOIN user_players up ON ut.id = up.user_team_id
+JOIN players p ON up.player_id = p.id
+LEFT JOIN teams t ON p.team_id = t.id;
+
+CREATE VIEW user_transfer_history AS
+SELECT 
+    ut.id as user_team_id,
+    ut.user_id,
+    ut.team_name,
+    utr.id as transfer_id,
+    utr.gameweek,
+    utr.transfer_cost,
+    utr.points_deducted,
+    utr.is_free_transfer,
+    utr.created_at,
+    pi.name as player_in_name,
+    pi.short_name as player_in_short_name,
+    pi.position as player_in_position,
+    po.name as player_out_name,
+    po.short_name as player_out_short_name,
+    po.position as player_out_position
+FROM user_teams ut
+JOIN user_transfers utr ON ut.id = utr.user_team_id
+LEFT JOIN players pi ON utr.player_in_id = pi.id
+LEFT JOIN players po ON utr.player_out_id = po.id
+ORDER BY utr.created_at DESC;
+
+-- 9. ENABLE ROW LEVEL SECURITY (RLS)
 ALTER TABLE leagues ENABLE ROW LEVEL SECURITY;
-ALTER TABLE teams ENABLE ROW LEVEL SECURITY;
 ALTER TABLE players ENABLE ROW LEVEL SECURITY;
 ALTER TABLE matches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE match_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transfers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transfer_market ENABLE ROW LEVEL SECURITY;
 ALTER TABLE standings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE player_gameweek_points ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gameweeks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_teams ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_players ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_transfers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_gameweek_points ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transfer_windows ENABLE ROW LEVEL SECURITY;
 
--- Create RLS Policies (adjust as needed for your app)
--- Allow public read access to all tables
+-- 10. CREATE RLS POLICIES
+-- Public Read Access
 CREATE POLICY "Enable read access for all users" ON leagues FOR SELECT USING (true);
-CREATE POLICY "Enable read access for all users" ON teams FOR SELECT USING (true);
 CREATE POLICY "Enable read access for all users" ON players FOR SELECT USING (true);
 CREATE POLICY "Enable read access for all users" ON matches FOR SELECT USING (true);
 CREATE POLICY "Enable read access for all users" ON match_events FOR SELECT USING (true);
 CREATE POLICY "Enable read access for all users" ON transfers FOR SELECT USING (true);
 CREATE POLICY "Enable read access for all users" ON transfer_market FOR SELECT USING (true);
 CREATE POLICY "Enable read access for all users" ON standings FOR SELECT USING (true);
+CREATE POLICY "Enable read access for all users" ON player_gameweek_points FOR SELECT USING (true);
+CREATE POLICY "Enable read access for all users" ON gameweeks FOR SELECT USING (true);
 
--- Allow authenticated users to insert/update/delete (adjust based on your auth requirements)
-CREATE POLICY "Enable insert for authenticated users" ON leagues FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Enable update for authenticated users" ON leagues FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "Enable delete for authenticated users" ON leagues FOR DELETE TO authenticated USING (true);
+-- User Team Policies
+CREATE POLICY "Users can read all user_teams" ON user_teams FOR SELECT USING (true);
+CREATE POLICY "Users can insert their own user_teams" ON user_teams FOR INSERT WITH CHECK (true);
+CREATE POLICY "Users can update their own user_teams" ON user_teams FOR UPDATE USING (true);
 
--- Repeat insert/update/delete policies for other tables as needed
+-- User Players Policies
+CREATE POLICY "Users can read all user_players" ON user_players FOR SELECT USING (true);
+CREATE POLICY "Users can insert their own user_players" ON user_players FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "Users can update their own user_players" ON user_players FOR UPDATE TO authenticated USING (true);
+CREATE POLICY "Users can delete their own user_players" ON user_players FOR DELETE TO authenticated USING (true);
+
+-- User Transfers Policies
+CREATE POLICY "Users can read all user_transfers" ON user_transfers FOR SELECT USING (true);
+CREATE POLICY "Users can insert their own user_transfers" ON user_transfers FOR INSERT TO authenticated WITH CHECK (true);
+
+-- User Gameweek Points Policies
+CREATE POLICY "Users can read all user_gameweek_points" ON user_gameweek_points FOR SELECT USING (true);
+CREATE POLICY "Users can insert their own user_gameweek_points" ON user_gameweek_points FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "Users can update their own user_gameweek_points" ON user_gameweek_points FOR UPDATE TO authenticated USING (true);
+
+-- Admin Policies (For authenticated users acting as admins)
+CREATE POLICY "Admin full access" ON user_teams FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Admin full access" ON user_players FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Admin full access" ON user_transfers FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Admin full access" ON user_gameweek_points FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Admin full access" ON gameweeks FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- Transfer Windows Policies
+CREATE POLICY "Enable read access for all users" ON transfer_windows FOR SELECT USING (true);
+CREATE POLICY "Admin full access" ON transfer_windows FOR ALL TO authenticated USING (true) WITH CHECK (true);

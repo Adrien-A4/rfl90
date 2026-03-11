@@ -85,11 +85,11 @@ const NewsPage = () => {
             <div className="flex items-center gap-8">
               <a href="/" className="text-2xl font-bold tracking-tight">
                 <Image
-                  src="/logo.png"
+                  src="/rff.png"
                   draggable={false}
-                  alt="RFL 90"
-                  width={40}
-                  height={40}
+                  alt="Real Futbol Fantasy"
+                  width={80}
+                  height={80}
                 />
               </a>
 
