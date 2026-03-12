@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import Loader from "@/components/ui/spinner";
 
 interface Player {
   id: string;
@@ -79,6 +80,7 @@ interface UserTeam {
 }
 
 interface Gameweek {
+  transfer_deadline: string | number | Date;
   id: string;
   gameweek_number: number;
   season: string;
@@ -620,8 +622,8 @@ export default function FantasyPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      <div className="min-h-screen bg-[#222222] flex items-center justify-center">
+        <Loader size="sm" />
       </div>
     );
   }
@@ -1026,13 +1028,7 @@ export default function FantasyPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.6 }}
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle>Bench</CardTitle>
-                </CardHeader>
-              </Card>
-            </motion.div>
+            ></motion.div>
           </div>
 
           <div className="space-y-6">
@@ -1072,45 +1068,16 @@ export default function FantasyPage() {
             {squadPlayers.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Upcoming Fixtures</CardTitle>
+                  <CardTitle>Transfer window deadline</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {[...new Set(squadPlayers.map((p) => p.player.team_id))]
-                    .slice(0, 5)
-                    .map((teamId) => {
-                      const player = squadPlayers.find(
-                        (p) => p.player.team_id === teamId,
-                      );
-                      const teamFixtures = getPlayerFixtures(teamId!);
-
-                      if (!teamFixtures.length) return null;
-
-                      return (
-                        <div key={teamId} className="space-y-2">
-                          <p className="text-sm font-medium text-foreground">
-                            {player?.player.team?.name}
-                          </p>
-                          {teamFixtures.map((fixture, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-center justify-between text-xs"
-                            >
-                              <span className="text-muted-foreground">
-                                {fixture.isHome ? "vs" : "@"}{" "}
-                                {fixture.opponent.short_name}
-                              </span>
-                              <div
-                                className={`w-5 h-5 rounded-full ${getDifficultyColor(
-                                  fixture.difficulty,
-                                )} text-white flex items-center justify-center text-[10px] font-bold`}
-                              >
-                                {fixture.difficulty}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })}
+                  <span className="text-muted-foreground">
+                    {currentGameweek?.transfer_deadline
+                      ? new Date(
+                          currentGameweek.transfer_deadline,
+                        ).toLocaleString()
+                      : "N/A"}
+                  </span>
                 </CardContent>
               </Card>
             )}

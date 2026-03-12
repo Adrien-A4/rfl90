@@ -3,10 +3,6 @@ import cookie from "cookie";
 
 const GUILD_ID = process.env.GUILD_ID;
 
-const PERMISSIONS = {
-  ADMINISTRATOR: 0x8,
-};
-
 export async function GET(req: Request) {
   const cookies = cookie.parse(req.headers.get("cookie") || "");
   const token = cookies.discord_token;
@@ -25,7 +21,6 @@ export async function GET(req: Request) {
     }
 
     const user = await userRes.json();
-
     let isAdmin = false;
 
     if (GUILD_ID) {
@@ -43,23 +38,41 @@ export async function GET(req: Request) {
           if (guild.owner_id === user.id) {
             isAdmin = true;
           } else {
-            const guildMemberRes = await fetch(
+            const memberRes = await fetch(
               `https://discord.com/api/guilds/${GUILD_ID}/members/${user.id}`,
               {
                 headers: { Authorization: `Bot ${process.env.BOT_TOKEN}` },
               },
             );
 
-            if (guildMemberRes.ok) {
-              const guildMember = await guildMemberRes.json();
-              const permissions = BigInt(guildMember.permissions || 0);
-              isAdmin =
-                (permissions & BigInt(PERMISSIONS.ADMINISTRATOR)) !== BigInt(0);
+            if (memberRes.ok) {
+              const member = await memberRes.json();
+
+              const rolesRes = await fetch(
+                `https://discord.com/api/guilds/${GUILD_ID}/roles`,
+                {
+                  headers: { Authorization: `Bot ${process.env.BOT_TOKEN}` },
+                },
+              );
+
+              if (rolesRes.ok) {
+                const roles = await rolesRes.json();
+                const maintainerRole = roles.find(
+                  (r: any) => r.name === "Maintainer",
+                );
+
+                if (
+                  maintainerRole &&
+                  member.roles.includes(maintainerRole.id)
+                ) {
+                  isAdmin = true;
+                }
+              }
             }
           }
         }
-      } catch (guildErr) {
-        console.error("Guild check error:", guildErr);
+      } catch (e) {
+        console.error("Guild check error:", e);
       }
     }
 
