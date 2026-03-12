@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -49,23 +49,21 @@ type Match = {
   league: League | null;
 };
 
-const MatchesPage = () => {
+function MatchesContent() {
   const [mounted, setMounted] = useState(false);
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedLeague, setSelectedLeague] = useState<string | null>(null);
+  const [uiSelectedLeague, setUiSelectedLeague] = useState<string | null>(null);
   const searchParams = useSearchParams();
+  const urlLeague = searchParams.get("league");
+  const selectedLeague = urlLeague || uiSelectedLeague;
 
   useEffect(() => {
     setMounted(true);
-    const leagueParam = searchParams.get("league");
-    if (leagueParam) {
-      setSelectedLeague(leagueParam);
-    }
     fetchMatches();
-  }, [searchParams]);
+  }, []);
 
   const fetchMatches = async () => {
     try {
@@ -367,7 +365,7 @@ const MatchesPage = () => {
                   </h3>
                   <div className="space-y-1">
                     <button
-                      onClick={() => setSelectedLeague(null)}
+                      onClick={() => setUiSelectedLeague(null)}
                       className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${
                         selectedLeague === null
                           ? "bg-white/10 text-white"
@@ -380,7 +378,7 @@ const MatchesPage = () => {
                     {leagues.map((league) => (
                       <button
                         key={league}
-                        onClick={() => setSelectedLeague(league)}
+                        onClick={() => setUiSelectedLeague(league)}
                         className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${
                           selectedLeague === league
                             ? "bg-white/10 text-white"
@@ -497,6 +495,18 @@ const MatchesPage = () => {
       </div>
     </div>
   );
-};
+}
 
-export default MatchesPage;
+export default function MatchesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
+      <MatchesContent />
+    </Suspense>
+  );
+}
