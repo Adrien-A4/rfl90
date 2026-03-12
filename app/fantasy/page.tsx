@@ -11,6 +11,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import Image from "next/image";
+import { X } from "lucide-react";
 import {
   formations,
   getFormationByName,
@@ -80,7 +81,6 @@ interface UserTeam {
 }
 
 interface Gameweek {
-  transfer_deadline: string | number | Date;
   id: string;
   gameweek_number: number;
   season: string;
@@ -183,7 +183,11 @@ export default function FantasyPage() {
       const res = await fetch("/api/auth/me");
       if (res.ok) {
         const data = await res.json();
-        setUserId(data.user?.id || data.user_id);
+        if (data.authenticated && data.user?.id) {
+          setUserId(data.user.id);
+        } else {
+          router.push("/login");
+        }
       } else {
         router.push("/login");
       }
@@ -213,10 +217,16 @@ export default function FantasyPage() {
 
   const fetchCurrentGameweek = async () => {
     try {
-      const res = await fetch("/api/fantasy/gameweeks?status=active");
-      const data = await res.json();
+      let res = await fetch("/api/fantasy/gameweeks?status=active");
+      let data = await res.json();
       if (data.gameweeks && data.gameweeks.length > 0) {
         setCurrentGameweek(data.gameweeks[0]);
+      } else {
+        res = await fetch("/api/fantasy/gameweeks");
+        data = await res.json();
+        if (data.gameweeks && data.gameweeks.length > 0) {
+          setCurrentGameweek(data.gameweeks[data.gameweeks.length - 1]);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch gameweek:", error);
@@ -432,16 +442,28 @@ export default function FantasyPage() {
   const makeTransfer = async (playerInId: string, playerOutId: string) => {
     if (!userTeam || !currentGameweek) return;
     try {
-      const res = await fetch("/api/fantasy/transfers", {
+      const playerToAdd = players.find((p) => p.id === playerInId);
+      if (!playerToAdd) return;
+
+      const userPlayerOut = userTeam.players?.find((p) => p.id === playerOutId);
+      if (!userPlayerOut) return;
+
+      await removePlayer(playerOutId);
+
+      const res = await fetch("/api/fantasy/user-players", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userTeamId: userTeam.id,
-          playerInId,
-          playerOutId,
-          gameweek: currentGameweek.gameweek_number,
+          playerId: playerInId,
+          squadPosition: userPlayerOut.squad_position,
+          slotId: userPlayerOut.slot_id || null,
+          isStarting: userPlayerOut.is_starting,
+          purchasePrice: playerToAdd.transfer_value || 0,
+          purchaseGameweek: currentGameweek?.gameweek_number || 1,
         }),
       });
+
       const data = await res.json();
       if (data.success) {
         fetchUserTeam();
@@ -449,10 +471,7 @@ export default function FantasyPage() {
         setPlayerToReplace(null);
         toast({
           title: "Transfer Complete",
-          description:
-            data.pointsDeducted > 0
-              ? `Points deducted: ${data.pointsDeducted}`
-              : "Free transfer!",
+          description: "Player replaced successfully!",
           variant: "success",
         });
       } else {
@@ -464,6 +483,11 @@ export default function FantasyPage() {
       }
     } catch (error) {
       console.error("Transfer failed:", error);
+      toast({
+        title: "Transfer Failed",
+        description: "Failed to complete transfer",
+        variant: "destructive",
+      });
     }
   };
 
@@ -886,58 +910,70 @@ export default function FantasyPage() {
                           className="absolute transform -translate-x-1/2 -translate-y-1/2"
                           style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
                         >
-                          <div className="flex flex-col items-center">
+                          <div className="flex flex-col items-center relative">
                             {squadPlayer ? (
-                              <motion.div
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center overflow-hidden border-2 cursor-pointer transition-colors ${
-                                  isCaptain
-                                    ? "border-yellow-500 bg-yellow-500/20"
-                                    : isViceCaptain
-                                      ? "border-blue-400 bg-blue-400/20"
-                                      : "border-muted"
-                                }`}
-                                style={{
-                                  borderColor:
-                                    squadPlayer.player.team?.primary_color ||
-                                    "#666",
-                                }}
-                                onClick={() =>
-                                  openPlayerPicker(
-                                    pos.position,
-                                    "replace",
-                                    squadPlayer.id,
-                                    pos.allowedPositions,
-                                    pos.id,
-                                    true,
-                                  )
-                                }
-                              >
-                                {squadPlayer.player.image ? (
-                                  <img
-                                    src={squadPlayer.player.image}
-                                    alt={squadPlayer.player.name}
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  <span className="text-xs font-bold text-foreground">
-                                    {squadPlayer.player.short_name}
-                                  </span>
-                                )}
-                                {(isCaptain || isViceCaptain) && (
-                                  <div
-                                    className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
-                                    style={{
-                                      backgroundColor: isCaptain
-                                        ? "#eab308"
-                                        : "#60a5fa",
-                                    }}
-                                  >
-                                    {isCaptain ? "C" : "VC"}
-                                  </div>
-                                )}
-                              </motion.div>
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removePlayer(squadPlayer.id);
+                                  }}
+                                  className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-600 border border-white flex items-center justify-center hover:bg-red-500 transition-colors z-30 shadow-lg"
+                                >
+                                  <X className="w-3 h-3 text-white font-bold" />
+                                </button>
+                                <motion.div
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center overflow-hidden border-2 cursor-pointer transition-colors ${
+                                    isCaptain
+                                      ? "border-yellow-500 bg-yellow-500/20"
+                                      : isViceCaptain
+                                        ? "border-blue-400 bg-blue-400/20"
+                                        : "border-muted"
+                                  }`}
+                                  style={{
+                                    borderColor:
+                                      squadPlayer.player.team?.primary_color ||
+                                      "#666",
+                                  }}
+                                  onClick={() =>
+                                    openPlayerPicker(
+                                      pos.position,
+                                      "replace",
+                                      squadPlayer.id,
+                                      pos.allowedPositions,
+                                      pos.id,
+                                      true,
+                                    )
+                                  }
+                                >
+                                  {squadPlayer.player.image ? (
+                                    <img
+                                      src={squadPlayer.player.image}
+                                      alt={squadPlayer.player.name}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <span className="text-xs font-bold text-foreground">
+                                      {squadPlayer.player.short_name}
+                                    </span>
+                                  )}
+                                  {(isCaptain || isViceCaptain) && (
+                                    <div
+                                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                                      style={{
+                                        backgroundColor: isCaptain
+                                          ? "#eab308"
+                                          : "#60a5fa",
+                                      }}
+                                    >
+                                      {isCaptain ? "C" : "VC"}
+                                    </div>
+                                  )}
+                                </motion.div>
+                              </>
                             ) : (
                               <motion.button
                                 whileHover={{ scale: 1.05 }}
@@ -976,7 +1012,92 @@ export default function FantasyPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.6 }}
-            ></motion.div>
+            >
+              <Card className="overflow-hidden">
+                <CardHeader>
+                  <CardTitle className="text-center">Bench</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap justify-center gap-4">
+                    {benchPlayers.map((player, index) => (
+                      <motion.div
+                        key={player.id}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.3, delay: index * 0.05 }}
+                        className="flex flex-col items-center relative"
+                      >
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removePlayer(player.id);
+                          }}
+                          className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-600 border border-white flex items-center justify-center hover:bg-red-500 transition-colors z-30 shadow-lg"
+                        >
+                          <X className="w-3 h-3 text-white font-bold" />
+                        </button>
+                        <motion.div
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="relative w-12 h-12 rounded-full flex items-center justify-center overflow-hidden border-2 border-muted cursor-pointer bg-secondary"
+                          onClick={() =>
+                            openPlayerPicker(
+                              player.player.position,
+                              "replace",
+                              player.id,
+                              [player.player.position],
+                              undefined,
+                              false,
+                            )
+                          }
+                        >
+                          {player.player.image ? (
+                            <img
+                              src={player.player.image}
+                              alt={player.player.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-xs font-bold text-foreground">
+                              {player.player.short_name}
+                            </span>
+                          )}
+                        </motion.div>
+                        <span className="text-[10px] text-foreground mt-1 text-center max-w-16 truncate">
+                          {player.player.name}
+                        </span>
+                      </motion.div>
+                    ))}
+                    {Array.from({
+                      length: Math.max(0, 4 - benchPlayers.length),
+                    }).map((_, i) => (
+                      <button
+                        key={`empty-${i}`}
+                        type="button"
+                        className="flex flex-col items-center bg-transparent border-none cursor-pointer p-0"
+                        onClick={() =>
+                          openPlayerPicker(
+                            "BENCH",
+                            "add",
+                            undefined,
+                            ["GK", "DEF", "MID", "FWD"],
+                            undefined,
+                            false,
+                          )
+                        }
+                      >
+                        <div className="w-12 h-12 rounded-full bg-secondary border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
+                          <span className="text-xs text-muted-foreground">
+                            +
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
           </div>
           <div className="space-y-6">
             <motion.div
@@ -1025,10 +1146,8 @@ export default function FantasyPage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <span className="text-muted-foreground">
-                    {currentGameweek?.transfer_deadline
-                      ? new Date(
-                          currentGameweek.transfer_deadline,
-                        ).toLocaleString()
+                    {currentGameweek?.deadline
+                      ? new Date(currentGameweek.deadline).toLocaleString()
                       : "N/A"}
                   </span>
                 </CardContent>
@@ -1109,13 +1228,16 @@ export default function FantasyPage() {
                             {player.team?.name}
                           </p>
                           {playerTeamFixtures.length > 0 && (
-                            <div className="flex gap-1 mt-1">
+                            <div className="flex gap-1 mt-1 items-center">
+                              <span className="text-[8px] text-muted-foreground">
+                                Diff:
+                              </span>
                               {playerTeamFixtures.map((f, i) => (
                                 <div
                                   key={i}
-                                  className={`w-4 h-4 rounded-full ${getDifficultyColor(
+                                  className={`w-5 h-5 rounded-full ${getDifficultyColor(
                                     f.difficulty,
-                                  )} text-[8px] text-white flex items-center justify-center`}
+                                  )} text-[8px] text-white flex items-center justify-center font-bold`}
                                 >
                                   {f.difficulty}
                                 </div>

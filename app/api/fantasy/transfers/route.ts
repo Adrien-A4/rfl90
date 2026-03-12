@@ -66,6 +66,21 @@ export async function POST(req: Request) {
 
     const supabase = getServerSupabase();
 
+    const { data: userPlayerOut, error: userPlayerOutError } = await supabase
+      .from("user_players")
+      .select("player_id")
+      .eq("id", playerOutId)
+      .single();
+
+    if (userPlayerOutError || !userPlayerOut) {
+      return NextResponse.json(
+        { error: "Player out not found in squad" },
+        { status: 400 },
+      );
+    }
+
+    const actualPlayerOutId = userPlayerOut.player_id;
+
     const { data: currentGw, error: gwError } = await supabase
       .from("gameweeks")
       .select("*")
@@ -123,7 +138,7 @@ export async function POST(req: Request) {
     const { data: playerOut, error: playerOutError } = await supabase
       .from("players")
       .select("*")
-      .eq("id", playerOutId)
+      .eq("id", actualPlayerOutId)
       .single();
 
     if (playerOutError || !playerOut) {

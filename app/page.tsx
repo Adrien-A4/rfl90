@@ -75,6 +75,7 @@ const RFL = () => {
     >
   >({});
   const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     setMounted(true);
@@ -191,17 +192,44 @@ const RFL = () => {
     return { label: formatMatchTime(match.scheduled_at), type: "scheduled" };
   };
 
-  const groupedMatches = matches.reduce(
-    (acc, match) => {
-      const leagueName = match.league?.name || match.competition || "Other";
-      if (!acc[leagueName]) {
-        acc[leagueName] = [];
+  const groupedMatches = matches
+    .filter((match) => {
+      if (!searchQuery) return true;
+      const query = searchQuery.toLowerCase();
+      const homeTeamName =
+        match.home_team?.name || teams[match.home_team_id]?.name || "";
+      const awayTeamName =
+        match.away_team?.name || teams[match.away_team_id]?.name || "";
+      const leagueName = match.league?.name || match.competition || "";
+      return (
+        homeTeamName.toLowerCase().includes(query) ||
+        awayTeamName.toLowerCase().includes(query) ||
+        leagueName.toLowerCase().includes(query)
+      );
+    })
+    .filter((match) => {
+      if (selectedTab === "ongoing") {
+        return match.status === "finished";
       }
-      acc[leagueName].push(match);
-      return acc;
-    },
-    {} as Record<string, Match[]>,
-  );
+      if (selectedTab === "ontv") {
+        return match.status === "live";
+      }
+      if (selectedTab === "bytime") {
+        return match.status === "scheduled";
+      }
+      return true;
+    })
+    .reduce(
+      (acc, match) => {
+        const leagueName = match.league?.name || match.competition || "Other";
+        if (!acc[leagueName]) {
+          acc[leagueName] = [];
+        }
+        acc[leagueName].push(match);
+        return acc;
+      },
+      {} as Record<string, Match[]>,
+    );
 
   if (!mounted) return null;
 
@@ -263,6 +291,8 @@ const RFL = () => {
                 <input
                   type="text"
                   placeholder="Search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 pr-4 py-2 w-80 bg-input border border-border rounded-lg focus:outline-none focus:border-white/20 transition-all text-sm"
                 />
               </div>
@@ -398,124 +428,134 @@ const RFL = () => {
               </div>
 
               <div className="space-y-4">
-                {Object.entries(groupedMatches).map(
-                  ([competition, competitionMatches]) => {
-                    return (
-                      <motion.div
-                        key={competition}
-                        initial={{ y: 10, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        className="bg-card rounded-xl overflow-hidden transition-colors duration-300"
-                      >
-                        <div className="flex items-center justify-between px-5 py-3 border-b border-white/5">
-                          <div className="flex items-center gap-3">
-                            <span className="font-medium text-sm">
-                              {competition}
-                            </span>
+                {Object.keys(groupedMatches).length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground/60">
+                    {selectedTab === "ongoing" &&
+                      "There's no ongoing matches, try live."}
+                    {selectedTab === "ontv" &&
+                      "There's no live matches, try By time."}
+                    {selectedTab === "bytime" && "There's no upcoming matches"}
+                  </div>
+                ) : (
+                  Object.entries(groupedMatches).map(
+                    ([competition, competitionMatches]) => {
+                      return (
+                        <motion.div
+                          key={competition}
+                          initial={{ y: 10, opacity: 0 }}
+                          animate={{ y: 0, opacity: 1 }}
+                          className="bg-card rounded-xl overflow-hidden transition-colors duration-300"
+                        >
+                          <div className="flex items-center justify-between px-5 py-3 border-b border-white/5">
+                            <div className="flex items-center gap-3">
+                              <span className="font-medium text-sm">
+                                {competition}
+                              </span>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
                           </div>
-                          <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
-                        </div>
 
-                        <div>
-                          {competitionMatches.map((match) => {
-                            const status = getMatchStatus(match);
-                            const homeTeam =
-                              match.home_team || teams[match.home_team_id];
-                            const awayTeam =
-                              match.away_team || teams[match.away_team_id];
+                          <div>
+                            {competitionMatches.map((match) => {
+                              const status = getMatchStatus(match);
+                              const homeTeam =
+                                match.home_team || teams[match.home_team_id];
+                              const awayTeam =
+                                match.away_team || teams[match.away_team_id];
 
-                            return (
-                              <div
-                                key={match.id}
-                                onClick={() =>
-                                  router.push(`/match/${match.id}`)
-                                }
-                                className="match-card px-5 py-4 border-b border-white/5 last:border-0 cursor-pointer"
-                              >
-                                <div className="flex items-center justify-between">
-                                  {status.type === "finished" && (
-                                    <div className="text-xs font-medium text-muted-foreground/40 w-12">
-                                      FT
-                                    </div>
-                                  )}
-                                  {status.type !== "finished" && (
-                                    <div className="text-sm font-medium w-12 text-center">
-                                      {status.type === "live" ? (
-                                        <span className="text-green-400 flex items-center gap-1">
-                                          <span className="w-2 h-2 bg-green-400 rounded-full live-dot" />
-                                          {status.label}
-                                        </span>
-                                      ) : (
-                                        <span className="text-muted-foreground/60">
-                                          {status.label}
-                                        </span>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  <div className="flex-1 flex items-center gap-3">
-                                    <div className="flex items-center gap-3 flex-1">
-                                      <span className="font-medium text-sm text-right flex-1">
-                                        {homeTeam?.name || "Home"}
-                                      </span>
-                                      <div className="w-5 h-5 relative shrink-0 ml-auto">
-                                        {homeTeam?.logo && (
-                                          <Image
-                                            src={homeTeam.logo}
-                                            alt={homeTeam.name || "Home"}
-                                            width={20}
-                                            height={20}
-                                            className="object-contain"
-                                          />
+                              return (
+                                <div
+                                  key={match.id}
+                                  onClick={() =>
+                                    router.push(`/match/${match.id}`)
+                                  }
+                                  className="match-card px-5 py-4 border-b border-white/5 last:border-0 cursor-pointer"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    {status.type === "finished" && (
+                                      <div className="text-xs font-medium text-muted-foreground/40 w-12">
+                                        FT
+                                      </div>
+                                    )}
+                                    {status.type !== "finished" && (
+                                      <div className="text-sm font-medium w-12 text-center">
+                                        {status.type === "live" ? (
+                                          <span className="text-green-400 flex items-center gap-1">
+                                            <span className="w-2 h-2 bg-green-400 rounded-full live-dot" />
+                                            {status.label}
+                                          </span>
+                                        ) : (
+                                          <span className="text-muted-foreground/60">
+                                            {status.label}
+                                          </span>
                                         )}
                                       </div>
-                                    </div>
+                                    )}
 
-                                    <div className="flex items-center gap-3 min-w-15 justify-center">
-                                      {status.type === "finished" ? (
-                                        <>
-                                          <span className="text-lg font-semibold w-6 text-center">
-                                            {match.home_score}
-                                          </span>
-                                          <span className="text-muted-foreground/30">
-                                            -
-                                          </span>
-                                          <span className="text-lg font-semibold w-6 text-center">
-                                            {match.away_score}
-                                          </span>
-                                        </>
-                                      ) : (
-                                        <span className="text-white/40 text-sm">
-                                          vs
+                                    <div className="flex-1 flex items-center gap-3">
+                                      <div className="flex items-center gap-3 flex-1">
+                                        <span className="font-medium text-sm text-right flex-1">
+                                          {homeTeam?.name || "Home"}
                                         </span>
-                                      )}
-                                    </div>
+                                        <div className="w-5 h-5 relative shrink-0 ml-auto">
+                                          {homeTeam?.logo && (
+                                            <Image
+                                              src={homeTeam.logo}
+                                              alt={homeTeam.name || "Home"}
+                                              width={20}
+                                              height={20}
+                                              className="object-contain"
+                                            />
+                                          )}
+                                        </div>
+                                      </div>
 
-                                    <div className="flex items-center gap-3 flex-1">
-                                      <div className="w-5 h-5 relative shrink-0">
-                                        {awayTeam?.logo && (
-                                          <Image
-                                            src={awayTeam.logo}
-                                            alt={awayTeam.name || "Away"}
-                                            width={20}
-                                            height={20}
-                                            className="object-contain"
-                                          />
+                                      <div className="flex items-center gap-3 min-w-15 justify-center">
+                                        {status.type === "finished" ? (
+                                          <>
+                                            <span className="text-lg font-semibold w-6 text-center">
+                                              {match.home_score}
+                                            </span>
+                                            <span className="text-muted-foreground/30">
+                                              -
+                                            </span>
+                                            <span className="text-lg font-semibold w-6 text-center">
+                                              {match.away_score}
+                                            </span>
+                                          </>
+                                        ) : (
+                                          <span className="text-white/40 text-sm">
+                                            vs
+                                          </span>
                                         )}
                                       </div>
-                                      <span className="font-medium text-sm">
-                                        {awayTeam?.name || "Away"}
-                                      </span>
+
+                                      <div className="flex items-center gap-3 flex-1">
+                                        <div className="w-5 h-5 relative shrink-0">
+                                          {awayTeam?.logo && (
+                                            <Image
+                                              src={awayTeam.logo}
+                                              alt={awayTeam.name || "Away"}
+                                              width={20}
+                                              height={20}
+                                              className="object-contain"
+                                            />
+                                          )}
+                                        </div>
+                                        <span className="font-medium text-sm">
+                                          {awayTeam?.name || "Away"}
+                                        </span>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </motion.div>
-                    );
-                  },
+                              );
+                            })}
+                          </div>
+                        </motion.div>
+                      );
+                    },
+                  )
                 )}
 
                 {matches.length === 0 && (

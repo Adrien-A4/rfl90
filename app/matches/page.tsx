@@ -44,6 +44,8 @@ type Match = {
   round: string | null;
   venue: string | null;
   referee: string | null;
+  home_difficulty: number | null;
+  away_difficulty: number | null;
   home_team: Team | null;
   away_team: Team | null;
   league: League | null;
@@ -126,6 +128,24 @@ function MatchesContent() {
   const formatScore = (match: Match) => {
     if (match.home_score == null || match.away_score == null) return "VS";
     return `${match.home_score} - ${match.away_score}`;
+  };
+
+  const getDifficultyColor = (difficulty: number | null) => {
+    if (difficulty == null) return "bg-gray-500";
+    switch (difficulty) {
+      case 1:
+        return "bg-green-500";
+      case 2:
+        return "bg-green-400";
+      case 3:
+        return "bg-yellow-500";
+      case 4:
+        return "bg-orange-500";
+      case 5:
+        return "bg-red-500";
+      default:
+        return "bg-gray-500";
+    }
   };
 
   if (!mounted) return null;
@@ -442,6 +462,13 @@ function MatchesContent() {
                                 <p className="text-base font-medium truncate">
                                   {match.home_team?.name || "Home Team"}
                                 </p>
+                                {match.home_difficulty && (
+                                  <div
+                                    className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold text-white ${getDifficultyColor(match.home_difficulty)}`}
+                                  >
+                                    {match.home_difficulty}
+                                  </div>
+                                )}
                               </div>
                             </div>
 
@@ -458,6 +485,13 @@ function MatchesContent() {
                                 <p className="text-base font-medium truncate">
                                   {match.away_team?.name || "Away Team"}
                                 </p>
+                                {match.away_difficulty && (
+                                  <div
+                                    className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold text-white ${getDifficultyColor(match.away_difficulty)}`}
+                                  >
+                                    {match.away_difficulty}
+                                  </div>
+                                )}
                               </div>
                               {match.away_team?.logo ? (
                                 <Image
