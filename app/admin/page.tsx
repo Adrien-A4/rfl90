@@ -889,7 +889,7 @@ export default function AdminPage() {
                             value: gw.gameweek_number.toString(),
                             label: `GW ${gw.gameweek_number}`,
                           }))
-                        : Array.from({ length: 15 }, (_, i) => ({
+                        : Array.from({ length: 11 }, (_, i) => ({
                             value: (i + 1).toString(),
                             label: `Gameweek ${i + 1}`,
                           }))
