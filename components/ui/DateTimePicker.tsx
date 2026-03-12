@@ -25,35 +25,81 @@ export function DateTimePicker({
   placeholder = "Pick a date and time",
   className,
 }: DateTimePickerProps) {
-  const [selectedTime, setSelectedTime] = React.useState<string>("12:00");
+  const [selectedHour, setSelectedHour] = React.useState<number>(12);
+  const [selectedMinute, setSelectedMinute] = React.useState<string>("00");
+  const [isPM, setIsPM] = React.useState<boolean>(false);
 
-  const hours = Array.from({ length: 24 }, (_, i) =>
-    i.toString().padStart(2, "0"),
-  );
+  const hours12 = Array.from({ length: 12 }, (_, i) => (i + 1).toString());
   const minutes = ["00", "15", "30", "45"];
 
   React.useEffect(() => {
     if (date) {
-      const hours = date.getHours().toString().padStart(2, "0");
-      const minutes = date.getMinutes().toString().padStart(2, "0");
-      setSelectedTime(`${hours}:${minutes}`);
+      const hours24 = date.getHours();
+      setIsPM(hours24 >= 12);
+      setSelectedHour(hours24 % 12 || 12);
+      setSelectedMinute(date.getMinutes().toString().padStart(2, "0"));
     }
   }, [date]);
 
   const handleDateSelect = (selectedDate: Date | undefined) => {
     if (selectedDate) {
-      const [hours, minutes] = selectedTime.split(":").map(Number);
-      selectedDate.setHours(hours, minutes, 0, 0);
+      const hour24 = isPM
+        ? selectedHour === 12
+          ? 12
+          : selectedHour + 12
+        : selectedHour === 12
+          ? 0
+          : selectedHour;
+      selectedDate.setHours(hour24, parseInt(selectedMinute), 0, 0);
       setDate(selectedDate);
     }
   };
 
-  const handleTimeChange = (newTime: string) => {
-    setSelectedTime(newTime);
+  const handleTimeChange = (type: "hour" | "minute", value: string) => {
+    const hour24 = isPM
+      ? type === "hour"
+        ? value === "12"
+          ? 12
+          : parseInt(value) + 12
+        : selectedHour === 12
+          ? 12
+          : selectedHour + 12
+      : type === "hour"
+        ? value === "12"
+          ? 0
+          : parseInt(value)
+        : selectedHour === 12
+          ? 0
+          : selectedHour;
+
+    const newMinute = type === "minute" ? value : selectedMinute;
+
     if (date) {
-      const [hours, minutes] = newTime.split(":").map(Number);
       const newDate = new Date(date);
-      newDate.setHours(hours, minutes, 0, 0);
+      newDate.setHours(hour24, parseInt(newMinute), 0, 0);
+      setDate(newDate);
+    }
+
+    if (type === "hour") {
+      setSelectedHour(parseInt(value));
+    } else {
+      setSelectedMinute(value);
+    }
+  };
+
+  const toggleAMPM = () => {
+    const newIsPM = !isPM;
+    setIsPM(newIsPM);
+    if (date) {
+      const hour24 = newIsPM
+        ? selectedHour === 12
+          ? 12
+          : selectedHour + 12
+        : selectedHour === 12
+          ? 0
+          : selectedHour;
+      const newDate = new Date(date);
+      newDate.setHours(hour24, parseInt(selectedMinute), 0, 0);
       setDate(newDate);
     }
   };
@@ -72,7 +118,7 @@ export function DateTimePicker({
           <Calendar className="mr-2 h-4 w-4" />
           {date ? (
             <span>
-              {format(date, "PPP")} at {format(date, "HH:mm")}
+              {format(date, "PPP")} at {format(date, "h:mm a")}
             </span>
           ) : (
             <span>{placeholder}</span>
@@ -100,17 +146,13 @@ export function DateTimePicker({
               <div className="flex flex-col items-center">
                 <span className="text-xs text-white/40 mb-1">Hour</span>
                 <div className="flex flex-col max-h-28 overflow-y-auto bg-[#0d0d0d] border border-white/10 rounded-lg py-1">
-                  {hours.map((hour) => (
+                  {hours12.map((hour) => (
                     <button
                       key={hour}
                       type="button"
-                      onClick={() =>
-                        handleTimeChange(
-                          `${hour}:${selectedTime.split(":")[1]}`,
-                        )
-                      }
+                      onClick={() => handleTimeChange("hour", hour)}
                       className={`px-4 py-1.5 text-sm transition-all hover:bg-white/10 ${
-                        selectedTime.split(":")[0] === hour
+                        selectedHour === parseInt(hour)
                           ? "bg-white/20 text-white font-medium"
                           : "text-white/70"
                       }`}
@@ -128,13 +170,9 @@ export function DateTimePicker({
                     <button
                       key={minute}
                       type="button"
-                      onClick={() =>
-                        handleTimeChange(
-                          `${selectedTime.split(":")[0]}:${minute}`,
-                        )
-                      }
+                      onClick={() => handleTimeChange("minute", minute)}
                       className={`px-4 py-1.5 text-sm transition-all hover:bg-white/10 ${
-                        selectedTime.split(":")[1] === minute
+                        selectedMinute === minute
                           ? "bg-white/20 text-white font-medium"
                           : "text-white/70"
                       }`}
@@ -142,6 +180,33 @@ export function DateTimePicker({
                       {minute}
                     </button>
                   ))}
+                </div>
+              </div>
+              <div className="flex flex-col items-center ml-2">
+                <span className="text-xs text-white/40 mb-1">AM/PM</span>
+                <div className="flex flex-col bg-[#0d0d0d] border border-white/10 rounded-lg py-1">
+                  <button
+                    type="button"
+                    onClick={toggleAMPM}
+                    className={`px-3 py-1.5 text-sm transition-all hover:bg-white/10 ${
+                      !isPM
+                        ? "bg-white/20 text-white font-medium"
+                        : "text-white/70"
+                    }`}
+                  >
+                    AM
+                  </button>
+                  <button
+                    type="button"
+                    onClick={toggleAMPM}
+                    className={`px-3 py-1.5 text-sm transition-all hover:bg-white/10 ${
+                      isPM
+                        ? "bg-white/20 text-white font-medium"
+                        : "text-white/70"
+                    }`}
+                  >
+                    PM
+                  </button>
                 </div>
               </div>
             </div>

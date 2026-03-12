@@ -71,6 +71,7 @@ interface Player {
 
 interface Match {
   id: string;
+  league_id: string | null;
   home_team_id: string;
   away_team_id: string;
   home_score: number;
@@ -338,6 +339,7 @@ export default function AdminPage() {
       const match = item as Match;
       setFormData({
         id: match.id,
+        leagueId: match.league_id,
         homeTeamId: match.home_team_id,
         awayTeamId: match.away_team_id,
         homeScore: match.home_score ?? 0,
@@ -451,14 +453,15 @@ export default function AdminPage() {
       } else if (type === "matches") {
         body = {
           id: formData.id,
-          home_team_id: formData.homeTeamId,
-          away_team_id: formData.awayTeamId,
-          home_score: formData.homeScore,
-          away_score: formData.awayScore,
+          leagueId: formData.leagueId,
+          homeTeamId: formData.homeTeamId,
+          awayTeamId: formData.awayTeamId,
+          homeScore: formData.homeScore,
+          awayScore: formData.awayScore,
           status: formData.status,
           competition: formData.competition,
           round: formData.round,
-          scheduled_at: formData.scheduledAt,
+          scheduledAt: formData.scheduledAt,
         };
       } else if (type === "news") {
         body = {
@@ -1085,7 +1088,6 @@ export default function AdminPage() {
                       <tr
                         key={match.id}
                         className="border-b border-white/5 hover:bg-white/5 cursor-pointer"
-                        onClick={() => router.push(`/match/${match.id}`)}
                       >
                         <td className="p-4">
                           <div className="flex items-center gap-2">
@@ -1885,6 +1887,24 @@ export default function AdminPage() {
 
                   {activeTab === "matches" && (
                     <>
+                      <div>
+                        <label className="block text-sm text-white/60 mb-1">
+                          League
+                        </label>
+                        <Select
+                          value={(formData.leagueId as string) || ""}
+                          onChange={(value) =>
+                            setFormData({ ...formData, leagueId: value })
+                          }
+                          options={[
+                            { value: "", label: "Select League" },
+                            ...leagues.map((league) => ({
+                              value: league.id,
+                              label: league.name,
+                            })),
+                          ]}
+                        />
+                      </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm text-white/60 mb-1">

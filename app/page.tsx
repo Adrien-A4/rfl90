@@ -18,6 +18,7 @@ type League = {
 
 type Match = {
   id: string;
+  league_id: string | null;
   home_team_id: string;
   away_team_id: string;
   home_score: number | null;
@@ -26,6 +27,12 @@ type Match = {
   scheduled_at: string;
   competition: string;
   round: string;
+  league?: {
+    id: string;
+    name: string;
+    short_name: string;
+    logo: string;
+  };
   home_team?: {
     id: string;
     name: string;
@@ -186,11 +193,11 @@ const RFL = () => {
 
   const groupedMatches = matches.reduce(
     (acc, match) => {
-      const leagueId = match.competition || "Other";
-      if (!acc[leagueId]) {
-        acc[leagueId] = [];
+      const leagueName = match.league?.name || match.competition || "Other";
+      if (!acc[leagueName]) {
+        acc[leagueName] = [];
       }
-      acc[leagueId].push(match);
+      acc[leagueName].push(match);
       return acc;
     },
     {} as Record<string, Match[]>,
@@ -309,7 +316,11 @@ const RFL = () => {
                     initial={{ x: -10, opacity: 0 }}
                     animate={mounted ? { x: 0, opacity: 1 } : {}}
                     transition={{ delay: 0.15 + index * 0.02 }}
-                    onClick={() => setExpandedLeague(league.id)}
+                    onClick={() =>
+                      router.push(
+                        `/matches?league=${encodeURIComponent(league.name)}`,
+                      )
+                    }
                     className={`league-item w-full flex items-center gap-3 p-3 rounded-lg ${
                       expandedLeague === league.id ? "bg-white/10" : ""
                     }`}

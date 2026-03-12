@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar,
@@ -55,11 +56,16 @@ const MatchesPage = () => {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLeague, setSelectedLeague] = useState<string | null>(null);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     setMounted(true);
+    const leagueParam = searchParams.get("league");
+    if (leagueParam) {
+      setSelectedLeague(leagueParam);
+    }
     fetchMatches();
-  }, []);
+  }, [searchParams]);
 
   const fetchMatches = async () => {
     try {
