@@ -126,6 +126,13 @@ const SQUAD_MINIMUMS = {
   FWD: 3,
 };
 
+const POSITION_LABELS: Record<string, string> = {
+  GK: "GK",
+  DEF: "CB",
+  MID: "MID",
+  FWD: "FWD",
+};
+
 export default function FantasyPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -544,7 +551,6 @@ export default function FantasyPage() {
     setPickerMode(mode);
     setPlayerToReplace(replaceId || null);
     setPickerIsStarting(isStarting);
-    setPickerIsStarting(isStarting);
     setShowPlayerPicker(true);
   };
 
@@ -656,60 +662,43 @@ export default function FantasyPage() {
           </CardContent>
         </Card>
 
-        {showCreateModal && (
-          <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-            <DialogContent
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && teamName) {
-                  createTeam();
-                }
-              }}
-            >
-              <motion.div
-                initial={{ opacity: 0, y: 12, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 8, scale: 0.98 }}
-                transition={{
-                  duration: 0.25,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
-              >
-                <DialogHeader>
-                  <DialogTitle>Create Your Team</DialogTitle>
-                </DialogHeader>
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="space-y-4 pt-4"
+        <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+          <DialogContent
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && teamName) {
+                createTeam();
+              }
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>Create Your Team</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-4">
+              <Input
+                type="text"
+                placeholder="Team Name"
+                value={teamName}
+                onChange={(e) => setTeamName(e.target.value)}
+              />
+              <div className="flex gap-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowCreateModal(false)}
+                  className="flex-1"
                 >
-                  <Input
-                    type="text"
-                    placeholder="Team Name"
-                    value={teamName}
-                    onChange={(e) => setTeamName(e.target.value)}
-                  />
-                  <div className="flex gap-4">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowCreateModal(false)}
-                      className="flex-1"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={createTeam}
-                      disabled={!teamName}
-                      className="flex-1"
-                    >
-                      Create
-                    </Button>
-                  </div>
-                </motion.div>
-              </motion.div>
-            </DialogContent>
-          </Dialog>
-        )}
+                  Cancel
+                </Button>
+                <Button
+                  onClick={createTeam}
+                  disabled={!teamName}
+                  className="flex-1"
+                >
+                  Create
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
@@ -888,14 +877,6 @@ export default function FantasyPage() {
                       const isViceCaptain =
                         squadPlayer?.id === userTeam.vice_captain_id;
 
-                      const benchSlotId = `${pos.id}-bench`;
-                      const benchForPosition =
-                        benchPlayers.find((bp) => bp.slot_id === benchSlotId) ||
-                        benchPlayers.find((bp) => {
-                          const bpPos = bp.squad_position;
-                          return pos.allowedPositions?.includes(bpPos as any);
-                        });
-
                       return (
                         <motion.div
                           key={pos.id}
@@ -905,147 +886,83 @@ export default function FantasyPage() {
                           className="absolute transform -translate-x-1/2 -translate-y-1/2"
                           style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
                         >
-                          <div className="flex items-center gap-1">
-                            <div className="flex flex-col items-center">
-                              {squadPlayer ? (
-                                <motion.div
-                                  whileHover={{ scale: 1.05 }}
-                                  whileTap={{ scale: 0.95 }}
-                                  className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center overflow-hidden border-2 cursor-pointer transition-colors ${
-                                    isCaptain
-                                      ? "border-yellow-500 bg-yellow-500/20"
-                                      : isViceCaptain
-                                        ? "border-blue-400 bg-blue-400/20"
-                                        : "border-muted"
-                                  }`}
-                                  style={{
-                                    borderColor:
-                                      squadPlayer.player.team?.primary_color ||
-                                      "#666",
-                                  }}
-                                  onClick={() =>
-                                    openPlayerPicker(
-                                      pos.position,
-                                      "replace",
-                                      squadPlayer.id,
-                                      pos.allowedPositions,
-                                      pos.id,
-                                      true,
-                                    )
-                                  }
-                                >
-                                  {squadPlayer.player.image ? (
-                                    <img
-                                      src={squadPlayer.player.image}
-                                      alt={squadPlayer.player.name}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : (
-                                    <span className="text-xs font-bold text-foreground">
-                                      {squadPlayer.player.short_name}
-                                    </span>
-                                  )}
-                                  {(isCaptain || isViceCaptain) && (
-                                    <div
-                                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
-                                      style={{
-                                        backgroundColor: isCaptain
-                                          ? "#eab308"
-                                          : "#60a5fa",
-                                      }}
-                                    >
-                                      {isCaptain ? "C" : "VC"}
-                                    </div>
-                                  )}
-                                </motion.div>
-                              ) : (
-                                <motion.button
-                                  whileHover={{ scale: 1.05 }}
-                                  whileTap={{ scale: 0.95 }}
-                                  onClick={() =>
-                                    canAddMorePlayers() &&
-                                    openPlayerPicker(
-                                      pos.position,
-                                      "add",
-                                      undefined,
-                                      pos.allowedPositions,
-                                      pos.id,
-                                      true,
-                                    )
-                                  }
-                                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-secondary border-2 border-dashed border-muted-foreground/20 flex items-center justify-center hover:bg-accent transition-colors"
-                                >
-                                  <span className="text-xs text-muted-foreground">
-                                    {pos.position}
+                          <div className="flex flex-col items-center">
+                            {squadPlayer ? (
+                              <motion.div
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center overflow-hidden border-2 cursor-pointer transition-colors ${
+                                  isCaptain
+                                    ? "border-yellow-500 bg-yellow-500/20"
+                                    : isViceCaptain
+                                      ? "border-blue-400 bg-blue-400/20"
+                                      : "border-muted"
+                                }`}
+                                style={{
+                                  borderColor:
+                                    squadPlayer.player.team?.primary_color ||
+                                    "#666",
+                                }}
+                                onClick={() =>
+                                  openPlayerPicker(
+                                    pos.position,
+                                    "replace",
+                                    squadPlayer.id,
+                                    pos.allowedPositions,
+                                    pos.id,
+                                    true,
+                                  )
+                                }
+                              >
+                                {squadPlayer.player.image ? (
+                                  <img
+                                    src={squadPlayer.player.image}
+                                    alt={squadPlayer.player.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <span className="text-xs font-bold text-foreground">
+                                    {squadPlayer.player.short_name}
                                   </span>
-                                </motion.button>
-                              )}
-                              <span className="text-[10px] text-foreground mt-1 text-center max-w-16 truncate">
-                                {squadPlayer?.player.name}
-                              </span>
-                            </div>
-
-                            <motion.div
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: 0.2 }}
-                              className="flex flex-col items-center"
-                            >
-                              {benchForPosition ? (
-                                <button
-                                  onClick={() =>
-                                    openPlayerPicker(
-                                      pos.position,
-                                      "replace",
-                                      benchForPosition.id,
-                                      pos.allowedPositions,
-                                      benchSlotId,
-                                      false,
-                                    )
-                                  }
-                                  className="group relative w-12 h-16 sm:w-14 sm:h-20 rounded-md bg-secondary/60 border border-white/10 overflow-hidden hover:border-white/30 transition-colors"
-                                >
-                                  <div className="absolute top-1 left-1 right-1 text-[9px] font-semibold text-white/80 bg-black/30 rounded px-1 text-center">
-                                    {formatBudget(
-                                      benchForPosition.purchase_price ||
-                                        benchForPosition.player.transfer_value,
-                                    )}
+                                )}
+                                {(isCaptain || isViceCaptain) && (
+                                  <div
+                                    className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                                    style={{
+                                      backgroundColor: isCaptain
+                                        ? "#eab308"
+                                        : "#60a5fa",
+                                    }}
+                                  >
+                                    {isCaptain ? "C" : "VC"}
                                   </div>
-                                  {benchForPosition.player.image ? (
-                                    <img
-                                      src={benchForPosition.player.image}
-                                      alt={benchForPosition.player.name}
-                                      className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-[9px] text-white/60">
-                                      {benchForPosition.player.short_name}
-                                    </div>
-                                  )}
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() =>
-                                    openPlayerPicker(
-                                      pos.position,
-                                      "add",
-                                      undefined,
-                                      pos.allowedPositions,
-                                      benchSlotId,
-                                      false,
-                                    )
-                                  }
-                                  className="w-12 h-16 sm:w-14 sm:h-20 rounded-md bg-secondary/30 border border-dashed border-muted-foreground/30 flex items-center justify-center hover:border-muted-foreground/50 hover:bg-secondary/50 transition-colors"
-                                >
-                                  <span className="text-[9px] text-muted-foreground">
-                                    Sub
-                                  </span>
-                                </button>
-                              )}
-                              <span className="text-[10px] text-muted-foreground mt-1 max-w-14 truncate text-center">
-                                {benchForPosition?.player.name || "Bench"}
-                              </span>
-                            </motion.div>
+                                )}
+                              </motion.div>
+                            ) : (
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() =>
+                                  canAddMorePlayers() &&
+                                  openPlayerPicker(
+                                    pos.position,
+                                    "add",
+                                    undefined,
+                                    pos.allowedPositions,
+                                    pos.id,
+                                    true,
+                                  )
+                                }
+                                className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-secondary border-2 border-dashed border-muted-foreground/20 flex items-center justify-center hover:bg-accent transition-colors"
+                              >
+                                <span className="text-xs text-muted-foreground">
+                                  {pos.position}
+                                </span>
+                              </motion.button>
+                            )}
+                            <span className="text-[10px] text-foreground mt-1 text-center max-w-16 truncate">
+                              {squadPlayer?.player.name}
+                            </span>
                           </div>
                         </motion.div>
                       );
@@ -1122,258 +1039,191 @@ export default function FantasyPage() {
 
         <AnimatePresence mode="wait">
           {showPlayerPicker && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center"
-              onClick={() => setShowPlayerPicker(false)}
-            >
-              <Dialog
-                open={showPlayerPicker}
-                onOpenChange={setShowPlayerPicker}
-              >
-                <DialogContent className="max-w-2xl max-h-[80vh]">
-                  <motion.div
-                    initial={{ scale: 0.96, opacity: 0, y: 16 }}
-                    animate={{ scale: 1, opacity: 1, y: 0 }}
-                    exit={{ scale: 0.98, opacity: 0, y: 10 }}
-                    transition={{
-                      duration: 0.25,
-                      ease: [0.22, 1, 0.36, 1],
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <DialogHeader>
-                      <DialogTitle>
-                        {pickerMode === "replace"
-                          ? "Replace Player"
-                          : "Add Player"}{" "}
-                        - {pickerPosition} {!pickerIsStarting ? "(Bench)" : ""}
-                      </DialogTitle>
-                    </DialogHeader>
-                    <div className="overflow-y-auto max-h-[60vh] space-y-2">
-                      {getPositionPlayers(
-                        pickerPosition,
-                        pickerPositionAllowed,
-                      ).map((player) => {
-                        const playerTeamFixtures = getPlayerFixtures(
-                          player.team_id,
-                        );
+            <Dialog open={showPlayerPicker} onOpenChange={setShowPlayerPicker}>
+              <DialogContent className="max-w-2xl max-h-[80vh]">
+                <DialogHeader>
+                  <DialogTitle>
+                    {pickerMode === "replace" ? "Replace Player" : "Add Player"}{" "}
+                    - {pickerPosition} {!pickerIsStarting ? "(Bench)" : ""}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="overflow-y-auto max-h-[60vh] space-y-2">
+                  {getPositionPlayers(
+                    pickerPosition,
+                    pickerPositionAllowed,
+                  ).map((player) => {
+                    const playerTeamFixtures = getPlayerFixtures(
+                      player.team_id,
+                    );
 
-                        return (
-                          <motion.button
-                            key={player.id}
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 0.2, ease: "easeOut" }}
-                            whileHover={{
-                              scale: 1.02,
-                              backgroundColor: "rgba(255,255,255,0.05)",
-                            }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => {
-                              if (pickerMode === "add") {
-                                addPlayer(
-                                  player.id,
-                                  pickerPosition,
-                                  pickerPositionAllowed,
-                                  pickerSlotId,
-                                  pickerIsStarting,
-                                );
-                              } else if (playerToReplace) {
-                                makeTransfer(player.id, playerToReplace);
-                              }
-                            }}
-                            className="w-full flex items-center gap-4 p-4 bg-secondary rounded-lg hover:bg-accent transition-colors text-left"
-                          >
-                            <div
-                              className="w-12 h-12 rounded-full flex items-center justify-center overflow-hidden"
-                              style={{
-                                backgroundColor:
-                                  player.team?.primary_color || "#333",
-                              }}
-                            >
-                              {player.image ? (
-                                <img
-                                  src={player.image}
-                                  alt={player.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <span className="text-xs font-bold text-white">
-                                  {player.short_name}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex-1">
-                              <p className="font-medium text-foreground">
-                                {player.name}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {player.team?.name}
-                              </p>
-                              {playerTeamFixtures.length > 0 && (
-                                <div className="flex gap-1 mt-1">
-                                  {playerTeamFixtures.map((f, i) => (
-                                    <div
-                                      key={i}
-                                      className={`w-4 h-4 rounded-full ${getDifficultyColor(
-                                        f.difficulty,
-                                      )} text-[8px] text-white flex items-center justify-center`}
-                                    >
-                                      {f.difficulty}
-                                    </div>
-                                  ))}
+                    return (
+                      <motion.button
+                        key={player.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        whileHover={{
+                          scale: 1.02,
+                          backgroundColor: "rgba(255,255,255,0.05)",
+                        }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => {
+                          if (pickerMode === "add") {
+                            addPlayer(
+                              player.id,
+                              pickerPosition,
+                              pickerPositionAllowed,
+                              pickerSlotId,
+                              pickerIsStarting,
+                            );
+                          } else if (playerToReplace) {
+                            makeTransfer(player.id, playerToReplace);
+                          }
+                        }}
+                        className="w-full flex items-center gap-4 p-4 bg-secondary rounded-lg hover:bg-accent transition-colors text-left"
+                      >
+                        <div
+                          className="w-12 h-12 rounded-full flex items-center justify-center overflow-hidden"
+                          style={{
+                            backgroundColor:
+                              player.team?.primary_color || "#333",
+                          }}
+                        >
+                          {player.image ? (
+                            <img
+                              src={player.image}
+                              alt={player.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-xs font-bold text-white">
+                              {player.short_name}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-foreground">
+                            {player.name}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {player.team?.name}
+                          </p>
+                          {playerTeamFixtures.length > 0 && (
+                            <div className="flex gap-1 mt-1">
+                              {playerTeamFixtures.map((f, i) => (
+                                <div
+                                  key={i}
+                                  className={`w-4 h-4 rounded-full ${getDifficultyColor(
+                                    f.difficulty,
+                                  )} text-[8px] text-white flex items-center justify-center`}
+                                >
+                                  {f.difficulty}
                                 </div>
-                              )}
+                              ))}
                             </div>
-                            <div className="text-right">
-                              <p className="font-bold text-purple-400">
-                                {formatBudget(player.transfer_value)}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {player.position}
-                              </p>
-                            </div>
-                          </motion.button>
-                        );
-                      })}
-                      {getPositionPlayers(pickerPosition, pickerPositionAllowed)
-                        .length === 0 && (
-                        <p className="text-center text-muted-foreground py-8">
-                          No players available for this position
-                        </p>
-                      )}
-                    </div>
-                  </motion.div>
-                </DialogContent>
-              </Dialog>
-            </motion.div>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-purple-400">
+                            {formatBudget(player.transfer_value)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {player.position}
+                          </p>
+                        </div>
+                      </motion.button>
+                    );
+                  })}
+                  {getPositionPlayers(pickerPosition, pickerPositionAllowed)
+                    .length === 0 && (
+                    <p className="text-center text-muted-foreground py-8">
+                      No players available for this position
+                    </p>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
           )}
         </AnimatePresence>
 
         <AnimatePresence mode="wait">
           {showCaptainModal && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center"
-              onClick={() => setShowCaptainModal(false)}
-            >
-              <Dialog
-                open={showCaptainModal}
-                onOpenChange={setShowCaptainModal}
-              >
-                <DialogContent>
-                  <motion.div
-                    initial={{ scale: 0.96, opacity: 0, y: 16 }}
-                    animate={{ scale: 1, opacity: 1, y: 0 }}
-                    exit={{ scale: 0.98, opacity: 0, y: 10 }}
-                    transition={{
-                      duration: 0.25,
-                      ease: [0.22, 1, 0.36, 1],
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <DialogHeader>
-                      <DialogTitle>Select Captain & Vice-Captain</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 pt-4">
-                      <div>
-                        <p className="text-sm font-medium mb-2">Captain</p>
-                        <Select
-                          value={userTeam.captain_id || ""}
-                          onValueChange={(value) => setCaptain(value, false)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Captain" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {[...squadPlayers, ...benchPlayers].map((up) => (
-                              <SelectItem key={up.id} value={up.id}>
-                                {up.player.name} ({up.player.position})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium mb-2">Vice-Captain</p>
-                        <Select
-                          value={userTeam.vice_captain_id || ""}
-                          onValueChange={(value) => setCaptain(value, true)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Vice-Captain" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {[...squadPlayers, ...benchPlayers].map((up) => (
-                              <SelectItem key={up.id} value={up.id}>
-                                {up.player.name} ({up.player.position})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </motion.div>
-                </DialogContent>
-              </Dialog>
-            </motion.div>
+            <Dialog open={showCaptainModal} onOpenChange={setShowCaptainModal}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Select Captain & Vice-Captain</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 pt-4">
+                  <div>
+                    <p className="text-sm font-medium mb-2">Captain</p>
+                    <Select
+                      value={userTeam.captain_id || ""}
+                      onValueChange={(value) => setCaptain(value, false)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Captain" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[...squadPlayers, ...benchPlayers].map((up) => (
+                          <SelectItem key={up.id} value={up.id}>
+                            {up.player.name} ({up.player.position})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium mb-2">Vice-Captain</p>
+                    <Select
+                      value={userTeam.vice_captain_id || ""}
+                      onValueChange={(value) => setCaptain(value, true)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Vice-Captain" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[...squadPlayers, ...benchPlayers].map((up) => (
+                          <SelectItem key={up.id} value={up.id}>
+                            {up.player.name} ({up.player.position})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           )}
         </AnimatePresence>
+
         <AnimatePresence mode="wait">
           {showResetConfirm && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center"
-              onClick={() => setShowResetConfirm(false)}
-            >
-              <Dialog
-                open={showResetConfirm}
-                onOpenChange={setShowResetConfirm}
-              >
-                <DialogContent>
-                  <motion.div
-                    initial={{ scale: 0.96, opacity: 0, y: 16 }}
-                    animate={{ scale: 1, opacity: 1, y: 0 }}
-                    exit={{ scale: 0.98, opacity: 0, y: 10 }}
-                    transition={{
-                      duration: 0.25,
-                      ease: [0.22, 1, 0.36, 1],
-                    }}
-                    onClick={(e) => e.stopPropagation()}
+            <Dialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Reset Lineup</DialogTitle>
+                </DialogHeader>
+                <p className="text-white/60 py-4">
+                  Are you sure you want to reset your lineup? This will remove
+                  all players from your squad.
+                </p>
+                <div className="flex gap-4 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowResetConfirm(false)}
+                    className="flex-1"
                   >
-                    <DialogHeader>
-                      <DialogTitle>Reset Lineup</DialogTitle>
-                    </DialogHeader>
-                    <p className="text-white/60 py-4">
-                      Are you sure you want to reset your lineup? This will
-                      remove all players from your squad.
-                    </p>
-                    <div className="flex gap-4 pt-4">
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowResetConfirm(false)}
-                        className="flex-1"
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        onClick={confirmResetLineup}
-                        className="flex-1 bg-red-600 hover:bg-red-700"
-                      >
-                        Reset
-                      </Button>
-                    </div>
-                  </motion.div>
-                </DialogContent>
-              </Dialog>
-            </motion.div>
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={confirmResetLineup}
+                    className="flex-1 bg-red-600 hover:bg-red-700"
+                  >
+                    Reset
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           )}
         </AnimatePresence>
       </div>

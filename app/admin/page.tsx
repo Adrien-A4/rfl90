@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Select } from "./components/Select";
 import { NumberInput } from "./components/NumberInput";
+import { DateTimePicker } from "@/components/ui/DateTimePicker";
 
 type Tab = "teams" | "players" | "matches" | "leagues" | "news" | "gameweeks";
 
@@ -1809,66 +1810,57 @@ export default function AdminPage() {
                         <label className="block text-sm text-white/60 mb-1">
                           Start Date
                         </label>
-                        <input
-                          type="datetime-local"
-                          value={
+                        <DateTimePicker
+                          date={
                             formData.startDate
-                              ? formData.startDate.toString().slice(0, 16)
-                              : ""
+                              ? new Date(formData.startDate as string)
+                              : null
                           }
-                          onChange={(e) =>
+                          setDate={(date) =>
                             setFormData({
                               ...formData,
-                              startDate: e.target.value
-                                ? new Date(e.target.value).toISOString()
-                                : null,
+                              startDate: date ? date.toISOString() : null,
                             })
                           }
-                          className="w-full px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg focus:outline-none focus:border-white/20 transition-all text-white"
+                          placeholder="Select start date"
                         />
                       </div>
                       <div>
                         <label className="block text-sm text-white/60 mb-1">
                           End Date
                         </label>
-                        <input
-                          type="datetime-local"
-                          value={
+                        <DateTimePicker
+                          date={
                             formData.endDate
-                              ? formData.endDate.toString().slice(0, 16)
-                              : ""
+                              ? new Date(formData.endDate as string)
+                              : null
                           }
-                          onChange={(e) =>
+                          setDate={(date) =>
                             setFormData({
                               ...formData,
-                              endDate: e.target.value
-                                ? new Date(e.target.value).toISOString()
-                                : null,
+                              endDate: date ? date.toISOString() : null,
                             })
                           }
-                          className="w-full px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg focus:outline-none focus:border-white/20 transition-all text-white"
+                          placeholder="Select end date"
                         />
                       </div>
                       <div>
                         <label className="block text-sm text-white/60 mb-1">
                           Deadline (Friday)
                         </label>
-                        <input
-                          type="datetime-local"
-                          value={
+                        <DateTimePicker
+                          date={
                             formData.deadline
-                              ? formData.deadline.toString().slice(0, 16)
-                              : ""
+                              ? new Date(formData.deadline as string)
+                              : null
                           }
-                          onChange={(e) =>
+                          setDate={(date) =>
                             setFormData({
                               ...formData,
-                              deadline: e.target.value
-                                ? new Date(e.target.value).toISOString()
-                                : null,
+                              deadline: date ? date.toISOString() : null,
                             })
                           }
-                          className="w-full px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg focus:outline-none focus:border-white/20 transition-all text-white"
+                          placeholder="Select deadline"
                         />
                       </div>
                       <div>
@@ -2036,24 +2028,19 @@ export default function AdminPage() {
                         <label className="block text-sm text-white/60 mb-1">
                           Scheduled Date
                         </label>
-                        <input
-                          type="datetime-local"
-                          value={
+                        <DateTimePicker
+                          date={
                             formData.scheduledAt
                               ? new Date(formData.scheduledAt as string)
-                                  .toISOString()
-                                  .slice(0, 16)
-                              : ""
+                              : null
                           }
-                          onChange={(e) =>
+                          setDate={(date) =>
                             setFormData({
                               ...formData,
-                              scheduledAt: new Date(
-                                e.target.value,
-                              ).toISOString(),
+                              scheduledAt: date ? date.toISOString() : null,
                             })
                           }
-                          className="w-full px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg focus:outline-none focus:border-white/20 transition-all text-white"
+                          placeholder="Select scheduled date"
                         />
                       </div>
                     </>
