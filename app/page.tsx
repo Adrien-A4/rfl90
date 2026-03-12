@@ -263,6 +263,12 @@ const RFL = () => {
 
             <nav className="flex items-center gap-6">
               <a
+                href="/news"
+                className="text-sm font-medium text-white/80 hover:text-white transition-colors"
+              >
+                News
+              </a>
+              <a
                 href="/matches"
                 className="text-sm font-medium text-white/80 hover:text-white transition-colors"
               >
@@ -273,12 +279,6 @@ const RFL = () => {
                 className="text-sm font-medium text-white/80 hover:text-white transition-colors"
               >
                 Fantasy
-              </a>
-              <a
-                href="/transfers"
-                className="text-sm font-medium text-white/80 hover:text-white transition-colors"
-              >
-                Transfers
               </a>
 
               <div className="flex gap-1 ml-4 items-center">

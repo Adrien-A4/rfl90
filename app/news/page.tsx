@@ -107,10 +107,10 @@ const NewsPage = () => {
                   Matches
                 </a>
                 <a
-                  href="/api/invite"
+                  href="/fantasy"
                   className="text-sm font-medium text-white/60 hover:text-white transition-colors"
                 >
-                  Discord
+                  Fantasy
                 </a>
               </nav>
             </div>
