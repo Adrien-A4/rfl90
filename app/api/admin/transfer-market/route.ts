@@ -13,7 +13,7 @@ export async function GET(req: Request) {
         `
         *,
         player:players!transfer_market_player_id_fkey (
-          id, name, short_name, image, position, rating, age, nationality,
+          id, name, short_name, image, position, rating, nationality,
           team:teams!players_team_id_fkey (id, name, short_name, logo)
         )
       `,

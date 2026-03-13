@@ -29,7 +29,6 @@ export interface Player {
     | "ST"
     | "CF";
   tier: string;
-  age: number;
   nationality: string;
   createdAt: number;
 }

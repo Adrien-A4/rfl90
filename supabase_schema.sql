@@ -51,7 +51,7 @@ CREATE TABLE players (
     image TEXT,
     position player_position NOT NULL,
     specific_position squad_position,
-    tier VARCHAR(1) DEFAULT 'B',
+    tier VARCHAR(2) DEFAULT 'B',
     age INTEGER DEFAULT 25,
     nationality VARCHAR(50) DEFAULT 'Unknown',
     height INTEGER,
@@ -142,7 +142,7 @@ CREATE TABLE player_gameweek_points (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     player_id UUID REFERENCES players(id) ON DELETE CASCADE,
     gameweek INTEGER NOT NULL,
-    points INTEGER DEFAULT 0,
+    gw_points INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(player_id, gameweek)
@@ -163,9 +163,17 @@ CREATE TABLE gameweeks (
 
 -- User Teams Table
 -- Note: Created initially without captain references to avoid circular dependency
+CREATE TABLE profiles (
+    id TEXT PRIMARY KEY, -- Discord ID
+    username VARCHAR(100) NOT NULL,
+    avatar TEXT,
+    discriminator VARCHAR(10),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE user_teams (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id TEXT NOT NULL,
+    user_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     team_name VARCHAR(100) DEFAULT 'My Team',
     budget DECIMAL(15, 2) DEFAULT 100000000,
     formation VARCHAR(20) DEFAULT '4-4-2',
@@ -213,7 +221,7 @@ CREATE TABLE user_gameweek_points (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_team_id UUID REFERENCES user_teams(id) ON DELETE CASCADE,
     gameweek INTEGER NOT NULL,
-    points INTEGER DEFAULT 0,
+    gw_points INTEGER DEFAULT 0,
     rank INTEGER,
     bench_points INTEGER DEFAULT 0,
     captain_points INTEGER DEFAULT 0,
@@ -487,3 +495,63 @@ CREATE POLICY "Admin full access" ON gameweeks FOR ALL TO authenticated USING (t
 -- Transfer Windows Policies
 CREATE POLICY "Enable read access for all users" ON transfer_windows FOR SELECT USING (true);
 CREATE POLICY "Admin full access" ON transfer_windows FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- 11. AUTOMATIC POINT CALCULATION TRIGGERS
+
+-- Function to recalculate total points for a user team
+CREATE OR REPLACE FUNCTION recalculate_user_team_points(team_id UUID)
+RETURNS VOID AS $$
+DECLARE
+    new_total_points INTEGER;
+BEGIN
+    SELECT COALESCE(SUM(pgp.gw_points), 0)
+    INTO new_total_points
+    FROM user_players up
+    JOIN user_teams ut ON up.user_team_id = ut.id
+    JOIN player_gameweek_points pgp ON up.player_id = pgp.player_id
+    JOIN gameweeks gw ON pgp.gameweek = gw.gameweek_number AND ut.season = gw.season
+    WHERE up.user_team_id = team_id;
+
+    UPDATE user_teams
+    SET total_points = new_total_points
+    WHERE id = team_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger function to call recalculate when player points change
+CREATE OR REPLACE FUNCTION trigger_recalculate_from_player_points()
+RETURNS TRIGGER AS $$
+BEGIN
+    PERFORM recalculate_user_team_points(user_team_id)
+    FROM user_players
+    WHERE player_id = NEW.player_id;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger function to call recalculate when team roster changes
+CREATE OR REPLACE FUNCTION trigger_recalculate_from_roster_change()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'DELETE') THEN
+        PERFORM recalculate_user_team_points(OLD.user_team_id);
+        RETURN OLD;
+    ELSE
+        PERFORM recalculate_user_team_points(NEW.user_team_id);
+        RETURN NEW;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Apply the triggers
+DROP TRIGGER IF EXISTS on_player_points_change ON player_gameweek_points;
+CREATE TRIGGER on_player_points_change
+    AFTER INSERT OR UPDATE ON player_gameweek_points
+    FOR EACH ROW
+    EXECUTE FUNCTION trigger_recalculate_from_player_points();
+
+DROP TRIGGER IF EXISTS on_roster_change ON user_players;
+CREATE TRIGGER on_roster_change
+    AFTER INSERT OR UPDATE OR DELETE ON user_players
+    FOR EACH ROW
+    EXECUTE FUNCTION trigger_recalculate_from_roster_change();

@@ -7,6 +7,7 @@ export async function GET(req: Request) {
     const leagueId = searchParams.get("leagueId");
     const status = searchParams.get("status");
     const matchId = searchParams.get("matchId");
+    const dateParam = searchParams.get("date");
 
     const supabase = getServerSupabase();
 
@@ -38,7 +39,7 @@ export async function GET(req: Request) {
         league:leagues!matches_league_id_fkey (id, name, short_name, logo)
       `,
       )
-      .order("scheduled_at", { ascending: false });
+      .order("scheduled_at", { ascending: true });
 
     if (leagueId) {
       query = query.eq("league_id", leagueId);
@@ -46,6 +47,17 @@ export async function GET(req: Request) {
 
     if (status) {
       query = query.eq("status", status);
+    }
+
+    if (dateParam) {
+      const startOfDay = new Date(dateParam);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(dateParam);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      query = query
+        .gte("scheduled_at", startOfDay.toISOString())
+        .lte("scheduled_at", endOfDay.toISOString());
     }
 
     const { data, error } = await query;

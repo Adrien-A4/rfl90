@@ -41,6 +41,17 @@ export async function GET(req: Request) {
     const { data: players, error } = await query;
     if (error) throw error;
 
+    // Fetch total points for all players
+    const { data: pointsData } = await supabase
+      .from("player_gameweek_points")
+      .select("player_id, gw_points");
+
+    const pointsMap = new Map<string, number>();
+    pointsData?.forEach((p) => {
+      const current = pointsMap.get(p.player_id) || 0;
+      pointsMap.set(p.player_id, current + (p.gw_points || 0));
+    });
+
     let userPlayerIds: string[] = [];
     if (userTeamId) {
       const { data: userPlayers } = await supabase
@@ -53,6 +64,7 @@ export async function GET(req: Request) {
 
     const playersWithAvailability = (players || []).map((player) => ({
       ...player,
+      total_points: pointsMap.get(player.id) || 0,
       isInSquad: userPlayerIds.includes(player.id),
     }));
 

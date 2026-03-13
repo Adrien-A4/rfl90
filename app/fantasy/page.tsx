@@ -43,6 +43,7 @@ interface Player {
   tier: string;
   team_id: string;
   transfer_value: number;
+  total_points?: number;
   team?: {
     id: string;
     name: string;
@@ -999,6 +1000,11 @@ export default function FantasyPage() {
                             <span className="text-[10px] text-foreground mt-1 text-center max-w-16 truncate">
                               {squadPlayer?.player.name}
                             </span>
+                            {squadPlayer && (
+                              <span className="text-[9px] font-bold text-yellow-500 bg-yellow-500/10 px-1 rounded-sm mt-0.5">
+                                {squadPlayer.player.total_points || 0} pts
+                              </span>
+                            )}
                           </div>
                         </motion.div>
                       );
@@ -1066,6 +1072,9 @@ export default function FantasyPage() {
                         </motion.div>
                         <span className="text-[10px] text-foreground mt-1 text-center max-w-16 truncate">
                           {player.player.name}
+                        </span>
+                        <span className="text-[9px] font-bold text-yellow-500 bg-yellow-500/10 px-1 rounded-sm mt-0.5">
+                          {player.player.total_points || 0} pts
                         </span>
                       </motion.div>
                     ))}
@@ -1248,6 +1257,9 @@ export default function FantasyPage() {
                         <div className="text-right">
                           <p className="font-bold text-purple-400">
                             {formatBudget(player.transfer_value)}
+                          </p>
+                          <p className="text-xs font-bold text-yellow-500">
+                            {player.total_points || 0} pts
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {player.position}

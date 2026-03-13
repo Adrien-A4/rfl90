@@ -52,7 +52,7 @@ export async function POST(req: Request) {
         {
           player_id: playerId,
           gameweek: parseInt(gameweek),
-          points: parseInt(points),
+          gw_points: parseInt(points),
         },
         {
           onConflict: "player_id,gameweek",
@@ -91,7 +91,7 @@ export async function PUT(req: Request) {
 
     const { data, error } = await supabase
       .from("player_gameweek_points")
-      .update({ points: parseInt(points) })
+      .update({ gw_points: parseInt(points) })
       .eq("player_id", playerId)
       .eq("gameweek", parseInt(gameweek))
       .select();

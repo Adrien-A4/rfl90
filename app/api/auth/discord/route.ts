@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import fetch from "node-fetch";
 import cookie from "cookie";
+import { getServerSupabase } from "@/lib/supabase-helpers";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -11,7 +12,7 @@ export async function GET(req: Request) {
       client_id: process.env.CLIENT_ID!,
       redirect_uri: process.env.REDIRECT_URI!,
       response_type: "code",
-      scope: "identify guilds guilds.join",
+      scope: "identify guilds",
     });
     return NextResponse.redirect(
       `https://discord.com/api/oauth2/authorize?${params.toString()}`,
@@ -43,7 +44,17 @@ export async function GET(req: Request) {
       id: string;
       username: string;
       avatar?: string | null;
+      discriminator: string;
     };
+
+    const supabase = getServerSupabase();
+    await supabase.from("profiles").upsert({
+      id: user.id,
+      username: user.username,
+      avatar: user.avatar,
+      discriminator: user.discriminator,
+      updated_at: new Date().toISOString(),
+    });
 
     const guildId = process.env.GUILD_ID;
     const botToken = process.env.BOT_TOKEN;
@@ -62,24 +73,6 @@ export async function GET(req: Request) {
         }),
       );
       return response;
-    }
-
-    const guildAddRes = await fetch(
-      `https://discord.com/api/guilds/${guildId}/members/${user.id}`,
-      {
-        method: "PUT",
-        headers: {
-          Authorization: `Bot ${botToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          access_token: tokenData.access_token,
-        }),
-      },
-    );
-
-    if (guildAddRes.status !== 204 && guildAddRes.status !== 200) {
-      console.error("Failed to add user to guild:", await guildAddRes.text());
     }
 
     const dmChannelRes = await fetch(

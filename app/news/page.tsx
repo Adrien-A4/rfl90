@@ -16,9 +16,17 @@ type News = {
   created_at: string;
 };
 
+type League = {
+  id: string;
+  name: string;
+  short_name: string | null;
+  logo: string | null;
+};
+
 const NewsPage = () => {
   const [mounted, setMounted] = useState(false);
   const [news, setNews] = useState<News[]>([]);
+  const [leagues, setLeagues] = useState<League[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedArticle, setSelectedArticle] = useState<News | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -27,7 +35,31 @@ const NewsPage = () => {
   useEffect(() => {
     setMounted(true);
     fetchNews();
+    fetchLeagues();
   }, []);
+
+  const getLeagueLogo = (categoryName: string) => {
+    if (!categoryName) return null;
+    const trimmedCategory = categoryName.trim().toLowerCase();
+    const league = leagues.find(
+      (l) =>
+        l.name.toLowerCase() === trimmedCategory ||
+        l.short_name?.toLowerCase() === trimmedCategory,
+    );
+    return league?.logo;
+  };
+
+  const fetchLeagues = async () => {
+    try {
+      const res = await fetch("/api/admin/leagues");
+      if (res.ok) {
+        const data = await res.json();
+        setLeagues(data.leagues || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch leagues:", err);
+    }
+  };
 
   const fetchNews = async () => {
     try {
@@ -186,7 +218,16 @@ const NewsPage = () => {
                 </button>
 
                 <div className="mb-6">
-                  <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white mb-4">
+                  <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white mb-4">
+                    {getLeagueLogo(selectedArticle.category) && (
+                      <Image
+                        src={getLeagueLogo(selectedArticle.category)!}
+                        alt={selectedArticle.category}
+                        width={14}
+                        height={14}
+                        className="object-contain"
+                      />
+                    )}
                     {selectedArticle.category}
                   </span>
                   <h1 className="text-2xl md:text-4xl font-bold mb-4 leading-tight">
@@ -241,20 +282,35 @@ const NewsPage = () => {
                       <Tag className="w-4 h-4" />
                       <span className="text-sm font-medium">All News</span>
                     </button>
-                    {categories.map((category) => (
-                      <button
-                        key={category}
-                        onClick={() => setSelectedCategory(category)}
-                        className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${
-                          selectedCategory === category
-                            ? "bg-white/10 text-white"
-                            : "text-white/60 hover:text-white hover:bg-white/5"
-                        }`}
-                      >
-                        <Tag className="w-4 h-4" />
-                        <span className="text-sm font-medium">{category}</span>
-                      </button>
-                    ))}
+                    {categories.map((category) => {
+                      const logo = getLeagueLogo(category);
+                      return (
+                        <button
+                          key={category}
+                          onClick={() => setSelectedCategory(category)}
+                          className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                            selectedCategory === category
+                              ? "bg-white/10 text-white"
+                              : "text-white/60 hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          {logo ? (
+                            <Image
+                              src={logo}
+                              alt={category}
+                              width={16}
+                              height={16}
+                              className="object-contain shrink-0"
+                            />
+                          ) : (
+                            <Tag className="w-4 h-4" />
+                          )}
+                          <span className="text-sm font-medium">
+                            {category}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </motion.aside>
@@ -288,7 +344,16 @@ const NewsPage = () => {
                           )}
                           <div className="p-6 flex-1">
                             <div className="flex items-center gap-3 mb-3">
-                              <span className="px-2 py-1 rounded text-xs font-medium bg-white/10 text-white">
+                              <span className="inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium bg-white/10 text-white">
+                                {getLeagueLogo(item.category) && (
+                                  <Image
+                                    src={getLeagueLogo(item.category)!}
+                                    alt={item.category}
+                                    width={12}
+                                    height={12}
+                                    className="object-contain"
+                                  />
+                                )}
                                 {item.category}
                               </span>
                               <span className="text-xs text-white/60">

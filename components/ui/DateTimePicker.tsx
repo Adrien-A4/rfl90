@@ -137,24 +137,26 @@ export function DateTimePicker({
             initialFocus
             className="bg-[#1a1a1a]"
           />
-          <div className="border-t border-white/10 p-3">
-            <div className="flex items-center gap-2 mb-2">
+          <div className="border-t border-white/10 p-4">
+            <div className="flex items-center gap-2 mb-4">
               <Clock className="h-4 w-4 text-white/60" />
-              <span className="text-sm text-white/60">Time</span>
+              <span className="text-sm font-medium text-white/60">Time</span>
             </div>
-            <div className="flex items-center justify-center gap-2">
-              <div className="flex flex-col items-center">
-                <span className="text-xs text-white/40 mb-1">Hour</span>
-                <div className="flex flex-col max-h-28 overflow-y-auto bg-[#0d0d0d] border border-white/10 rounded-lg py-1">
+            
+            <div className="space-y-4">
+              {/* Hours */}
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-2 block">Hour</span>
+                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1">
                   {hours12.map((hour) => (
                     <button
                       key={hour}
                       type="button"
                       onClick={() => handleTimeChange("hour", hour)}
-                      className={`px-4 py-1.5 text-sm transition-all hover:bg-white/10 ${
+                      className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-sm transition-all ${
                         selectedHour === parseInt(hour)
-                          ? "bg-white/20 text-white font-medium"
-                          : "text-white/70"
+                          ? "bg-white text-black font-bold"
+                          : "bg-white/5 text-white/70 hover:bg-white/10"
                       }`}
                     >
                       {hour}
@@ -162,19 +164,20 @@ export function DateTimePicker({
                   ))}
                 </div>
               </div>
-              <span className="text-white text-lg mt-4">:</span>
-              <div className="flex flex-col items-center">
-                <span className="text-xs text-white/40 mb-1">Min</span>
-                <div className="flex flex-col max-h-28 overflow-y-auto bg-[#0d0d0d] border border-white/10 rounded-lg py-1">
-                  {minutes.map((minute) => (
+
+              {/* Minutes */}
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-2 block">Minute</span>
+                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1">
+                  {["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"].map((minute) => (
                     <button
                       key={minute}
                       type="button"
                       onClick={() => handleTimeChange("minute", minute)}
-                      className={`px-4 py-1.5 text-sm transition-all hover:bg-white/10 ${
+                      className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-sm transition-all ${
                         selectedMinute === minute
-                          ? "bg-white/20 text-white font-medium"
-                          : "text-white/70"
+                          ? "bg-white text-black font-bold"
+                          : "bg-white/5 text-white/70 hover:bg-white/10"
                       }`}
                     >
                       {minute}
@@ -182,32 +185,31 @@ export function DateTimePicker({
                   ))}
                 </div>
               </div>
-              <div className="flex flex-col items-center ml-2">
-                <span className="text-xs text-white/40 mb-1">AM/PM</span>
-                <div className="flex flex-col bg-[#0d0d0d] border border-white/10 rounded-lg py-1">
-                  <button
-                    type="button"
-                    onClick={toggleAMPM}
-                    className={`px-3 py-1.5 text-sm transition-all hover:bg-white/10 ${
-                      !isPM
-                        ? "bg-white/20 text-white font-medium"
-                        : "text-white/70"
-                    }`}
-                  >
-                    AM
-                  </button>
-                  <button
-                    type="button"
-                    onClick={toggleAMPM}
-                    className={`px-3 py-1.5 text-sm transition-all hover:bg-white/10 ${
-                      isPM
-                        ? "bg-white/20 text-white font-medium"
-                        : "text-white/70"
-                    }`}
-                  >
-                    PM
-                  </button>
-                </div>
+
+              {/* AM/PM */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => !isPM || toggleAMPM()}
+                  className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
+                    !isPM
+                      ? "bg-white text-black"
+                      : "bg-white/5 text-white/70 hover:bg-white/10"
+                  }`}
+                >
+                  AM
+                </button>
+                <button
+                  type="button"
+                  onClick={() => isPM || toggleAMPM()}
+                  className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
+                    isPM
+                      ? "bg-white text-black"
+                      : "bg-white/5 text-white/70 hover:bg-white/10"
+                  }`}
+                >
+                  PM
+                </button>
               </div>
             </div>
           </div>

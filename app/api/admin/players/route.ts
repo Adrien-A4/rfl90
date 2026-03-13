@@ -29,12 +29,13 @@ export async function GET(req: Request) {
       (data || []).map(async (player) => {
         const { data: pointsData } = await supabase
           .from("player_gameweek_points")
-          .select("points")
+          .select("gw_points")
           .eq("player_id", player.id);
 
         const totalPoints =
           pointsData?.reduce(
-            (sum: number, record: { points: number }) => sum + record.points,
+            (sum: number, record: { gw_points: number }) =>
+              sum + record.gw_points,
             0,
           ) || 0;
 
@@ -59,14 +60,13 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    const player = {
+    const player: Record<string, any> = {
       team_id: body.teamId,
       name: body.name,
       short_name: body.shortName || body.name.substring(0, 2).toUpperCase(),
       image: body.image ?? "/noFilter.png",
       position: body.position,
       tier: body.tier || "B",
-      age: body.age || 25,
       nationality: body.nationality || "Unknown",
       height: body.height || null,
       weight: body.weight || null,
@@ -74,6 +74,7 @@ export async function POST(req: Request) {
       contract_until: body.contractUntil || null,
       market_value: body.marketValue || 0,
       transfer_value: body.transferValue || 0,
+      roblox_username: body.robloxUsername || null,
     };
 
     const supabase = getServerSupabase();
@@ -107,19 +108,19 @@ export async function PUT(req: Request) {
       );
     }
 
-    const updates = {
+    const updates: Record<string, any> = {
       name: data.name,
       short_name: data.shortName,
       image: data.image,
       team_id: data.teamId,
       position: data.position,
       tier: data.tier,
-      age: data.age,
       nationality: data.nationality,
       jersey_number: data.jerseyNumber,
       contract_until: data.contractUntil,
       market_value: data.marketValue,
       transfer_value: data.transferValue,
+      roblox_username: data.robloxUsername || null,
     };
 
     const supabase = getServerSupabase();

@@ -1,12 +1,20 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, ChevronRight, Settings, User } from "lucide-react";
+import {
+  Search,
+  ChevronRight,
+  Settings,
+  User,
+  Calendar as CalendarIcon,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import RedirectWithFadeButton from "./components/RedirectWithFadeButton";
 import SettingsMenu from "./components/SettingsMenu";
 import Image from "next/image";
+import { DateTimePicker } from "@/components/ui/DateTimePicker";
+import { format, isSameDay } from "date-fns";
 
 type League = {
   id: string;
@@ -76,14 +84,31 @@ const RFL = () => {
   >({});
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
+    new Date(),
+  );
+
+  const dateRange = useMemo(() => {
+    const dates = [];
+    const baseDate = selectedDate || new Date();
+    for (let i = -3; i <= 3; i++) {
+      const d = new Date(baseDate);
+      d.setDate(d.getDate() + i);
+      dates.push(d);
+    }
+    return dates;
+  }, [selectedDate]);
 
   useEffect(() => {
     setMounted(true);
     fetchLeagues();
     fetchTeams();
-    fetchMatches();
     fetchNews();
   }, []);
+
+  useEffect(() => {
+    fetchMatches();
+  }, [selectedDate]);
 
   const fetchNews = async () => {
     try {
@@ -142,7 +167,12 @@ const RFL = () => {
 
   const fetchMatches = async () => {
     try {
-      const res = await fetch("/api/admin/matches");
+      const dateQuery = selectedDate
+        ? `&date=${selectedDate.toISOString()}`
+        : "";
+      const res = await fetch(
+        `/api/admin/matches?_t=${Date.now()}${dateQuery}`,
+      );
       if (!res.ok) throw new Error(`API error: ${res.status}`);
       const data = await res.json();
       setMatches(data.matches || []);
@@ -154,22 +184,7 @@ const RFL = () => {
 
   const formatMatchTime = (dateStr: string) => {
     const date = new Date(dateStr);
-    const now = new Date();
-    const diff = date.getTime() - now.getTime();
-
-    if (diff < 0) {
-      return "FT";
-    }
-
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-    if (hours > 24) {
-      const days = Math.floor(hours / 24);
-      return `${days}d`;
-    }
-
-    return `${hours}:${minutes.toString().padStart(2, "0")}`;
+    return format(date, "HH:mm");
   };
 
   const getMatchStatus = (match: Match) => {
@@ -185,8 +200,10 @@ const RFL = () => {
     }
 
     const diff = scheduledDate.getTime() - now.getTime();
-    if (diff > 0 && diff < 2 * 60 * 60 * 1000) {
-      return { label: `${Math.floor(diff / 60000)}'`, type: "upcoming" };
+
+    // If it's starting within 10 minutes
+    if (diff > 0 && diff < 10 * 60 * 1000) {
+      return { label: "Starting soon", type: "upcoming" };
     }
 
     return { label: formatMatchTime(match.scheduled_at), type: "scheduled" };
@@ -208,6 +225,7 @@ const RFL = () => {
       );
     })
     .filter((match) => {
+      if (selectedTab === "all") return true;
       if (selectedTab === "ongoing") {
         return match.status === "finished";
       }
@@ -240,6 +258,14 @@ const RFL = () => {
         
         * {
           font-family: 'Inter', sans-serif;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
         }
 
         .match-card {
@@ -380,18 +406,60 @@ const RFL = () => {
               transition={{ delay: 0.2 }}
             >
               <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <button className="p-2 hover:bg-white/5 rounded-lg transition-colors">
+                <div className="flex items-center gap-3 w-full">
+                  <button
+                    onClick={() => {
+                      const newDate = new Date(selectedDate || new Date());
+                      newDate.setDate(newDate.getDate() - 1);
+                      setSelectedDate(newDate);
+                    }}
+                    className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+                  >
                     <ChevronRight className="w-5 h-5 rotate-180 text-muted-foreground/60" />
                   </button>
-                  <h2 className="text-lg font-semibold">Today</h2>
-                  <button className="p-2 hover:bg-white/5 rounded-lg transition-colors">
+
+                  <div className="flex-1 max-w-[320px]">
+                    <DateTimePicker
+                      date={selectedDate}
+                      setDate={setSelectedDate}
+                      placeholder="Select date"
+                      className="bg-transparent border-none hover:bg-white/5 font-semibold text-base md:text-lg h-auto py-1 px-2 w-full justify-center"
+                    />
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      const newDate = new Date(selectedDate || new Date());
+                      newDate.setDate(newDate.getDate() + 1);
+                      setSelectedDate(newDate);
+                    }}
+                    className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+                  >
                     <ChevronRight className="w-5 h-5 text-muted-foreground/60" />
                   </button>
+
+                  {!isSameDay(selectedDate || new Date(), new Date()) && (
+                    <button
+                      onClick={() => setSelectedDate(new Date())}
+                      className="ml-auto text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded transition-colors text-muted-foreground"
+                    >
+                      Reset to Today
+                    </button>
+                  )}
                 </div>
               </div>
 
               <div className="flex gap-2 mb-6">
+                <button
+                  onClick={() => setSelectedTab("all")}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    selectedTab === "all"
+                      ? "bg-white/10 text-foreground"
+                      : "text-muted-foreground/60 hover:text-foreground"
+                  }`}
+                >
+                  All
+                </button>
                 <button
                   onClick={() => setSelectedTab("ongoing")}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
@@ -430,11 +498,10 @@ const RFL = () => {
               <div className="space-y-4">
                 {Object.keys(groupedMatches).length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground/60">
-                    {selectedTab === "ongoing" &&
-                      "There's no ongoing matches, try live."}
-                    {selectedTab === "ontv" &&
-                      "There's no live matches, try By time."}
-                    {selectedTab === "bytime" && "There's no upcoming matches"}
+                    {selectedTab === "all" && "No matches found for this date."}
+                    {selectedTab === "ongoing" && "No finished matches found."}
+                    {selectedTab === "ontv" && "No live matches found."}
+                    {selectedTab === "bytime" && "No upcoming matches found."}
                   </div>
                 ) : (
                   Object.entries(groupedMatches).map(
@@ -472,25 +539,30 @@ const RFL = () => {
                                   className="match-card px-5 py-4 border-b border-white/5 last:border-0 cursor-pointer"
                                 >
                                   <div className="flex items-center justify-between">
-                                    {status.type === "finished" && (
-                                      <div className="text-xs font-medium text-muted-foreground/40 w-12">
-                                        FT
-                                      </div>
-                                    )}
-                                    {status.type !== "finished" && (
-                                      <div className="text-sm font-medium w-12 text-center">
-                                        {status.type === "live" ? (
-                                          <span className="text-green-400 flex items-center gap-1">
-                                            <span className="w-2 h-2 bg-green-400 rounded-full live-dot" />
-                                            {status.label}
+                                    <div className="w-20 flex flex-col items-center justify-center shrink-0">
+                                      {status.type === "finished" ? (
+                                        <span className="text-xs font-bold text-muted-foreground/40 px-2 py-1 bg-white/5 rounded uppercase tracking-wider">
+                                          FT
+                                        </span>
+                                      ) : status.type === "live" ? (
+                                        <div className="flex flex-col items-center gap-1">
+                                          <span className="text-[10px] font-bold text-green-400 animate-pulse">
+                                            LIVE
                                           </span>
-                                        ) : (
-                                          <span className="text-muted-foreground/60">
-                                            {status.label}
-                                          </span>
-                                        )}
-                                      </div>
-                                    )}
+                                          <div className="w-1.5 h-1.5 bg-green-400 rounded-full live-dot" />
+                                        </div>
+                                      ) : status.type === "upcoming" ? (
+                                        <span className="text-[10px] font-bold text-yellow-500 bg-yellow-500/10 px-1.5 py-0.5 rounded text-center leading-tight">
+                                          STARTING
+                                          <br />
+                                          SOON
+                                        </span>
+                                      ) : (
+                                        <span className="text-sm font-semibold text-foreground/80 tracking-tight">
+                                          {status.label}
+                                        </span>
+                                      )}
+                                    </div>
 
                                     <div className="flex-1 flex items-center gap-3">
                                       <div className="flex items-center gap-3 flex-1">
@@ -579,7 +651,7 @@ const RFL = () => {
             >
               <div className="bg-card rounded-xl p-6 transition-colors duration-300">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-sm">Build your own XI</h3>
+                  <h3 className="font-semibold text-sm">Fantasy leaderboard</h3>
                   <button className="text-white/40 hover:text-white transition-colors">
                     <svg
                       className="w-5 h-5"
@@ -597,15 +669,17 @@ const RFL = () => {
                   </button>
                 </div>
                 <p className="text-sm text-white/40 mb-4">
-                  Try our lineup builder
+                  Check out the leaderboard! see how your team stacks up against
+                  the competition and climb the ranks to become the ultimate
+                  fantasy football champion!
                 </p>
 
                 <div className="flex">
                   <RedirectWithFadeButton
-                    to="/lineup"
+                    to="/fantasy/leaderboard"
                     className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm transition-colors text-left"
                   >
-                    Open Lineup Builder
+                    Open Leaderboard
                   </RedirectWithFadeButton>
                 </div>
               </div>

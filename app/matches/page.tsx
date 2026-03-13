@@ -54,6 +54,7 @@ type Match = {
 function MatchesContent() {
   const [mounted, setMounted] = useState(false);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [leaguesData, setLeaguesData] = useState<League[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -65,7 +66,20 @@ function MatchesContent() {
   useEffect(() => {
     setMounted(true);
     fetchMatches();
+    fetchLeagues();
   }, []);
+
+  const fetchLeagues = async () => {
+    try {
+      const res = await fetch("/api/admin/leagues");
+      if (res.ok) {
+        const data = await res.json();
+        setLeaguesData(data.leagues || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch leagues:", err);
+    }
+  };
 
   const fetchMatches = async () => {
     try {
@@ -81,12 +95,28 @@ function MatchesContent() {
     }
   };
 
+  const getLeagueLogo = (leagueName: string) => {
+    if (!leagueName) return null;
+    const trimmedName = leagueName.trim().toLowerCase();
+    const league = leaguesData.find(
+      (l) =>
+        l.name.toLowerCase() === trimmedName ||
+        l.short_name?.toLowerCase() === trimmedName,
+    );
+    return league?.logo;
+  };
+
   const leagues = useMemo(() => {
-    const names = matches
-      .map((match) => match.league?.name)
-      .filter((name): name is string => Boolean(name));
-    return [...new Set(names)];
-  }, [matches]);
+    const leagueNames = new Set<string>();
+    matches.forEach((match) => {
+      const name = match.league?.name || match.competition;
+      if (name) leagueNames.add(name);
+    });
+    return Array.from(leagueNames).map((name) => ({
+      name,
+      logo: getLeagueLogo(name),
+    }));
+  }, [matches, leaguesData]);
 
   const filteredMatches = matches.filter((match) => {
     const searchable = [
@@ -107,10 +137,11 @@ function MatchesContent() {
       .toLowerCase();
     const matchesSearch = searchable.includes(searchQuery.toLowerCase());
     const matchesLeague = selectedLeague
-      ? match.league?.name === selectedLeague
+      ? (match.league?.name || match.competition) === selectedLeague
       : true;
     return matchesSearch && matchesLeague;
-  });
+    });
+
 
   const formatDateTime = (dateStr: string | null) => {
     if (!dateStr) return "TBD";
@@ -315,8 +346,16 @@ function MatchesContent() {
                 <div className="p-8">
                   <div className="flex flex-wrap items-center gap-3 mb-6">
                     <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white">
-                      <Trophy className="w-3 h-3" />
-                      {selectedMatch.league?.name || "League"}
+                      {getLeagueLogo(selectedMatch.league?.name || selectedMatch.competition || "") && (
+                        <Image
+                          src={getLeagueLogo(selectedMatch.league?.name || selectedMatch.competition || "")!}
+                          alt={selectedMatch.league?.name || selectedMatch.competition || "League"}
+                          width={14}
+                          height={14}
+                          className="object-contain"
+                        />
+                      )}
+                      {selectedMatch.league?.name || selectedMatch.competition || "League"}
                     </span>
                     <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white">
                       <Calendar className="w-3 h-3" />
@@ -397,16 +436,28 @@ function MatchesContent() {
                     </button>
                     {leagues.map((league) => (
                       <button
-                        key={league}
-                        onClick={() => setUiSelectedLeague(league)}
-                        className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${
-                          selectedLeague === league
+                        key={league.name}
+                        onClick={() => setUiSelectedLeague(league.name)}
+                        className={`w-full flex items-center  gap-4 p-3 rounded-lg transition-colors ${
+                          selectedLeague === league.name
                             ? "bg-white/10 text-white"
                             : "text-white/60 hover:text-white hover:bg-white/5"
                         }`}
                       >
-                        <Tag className="w-4 h-4" />
-                        <span className="text-sm font-medium">{league}</span>
+                        {league.logo ? (
+                          <Image
+                            src={league.logo}
+                            alt={league.name}
+                            width={24}
+                            height={24}
+                            className="object-contain"
+                          />
+                        ) : (
+                          <Tag className="w-4 h-4" />
+                        )}
+                        <span className="text-sm font-medium">
+                          {league.name}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -431,8 +482,17 @@ function MatchesContent() {
                       >
                         <div className="p-6">
                           <div className="flex flex-wrap items-center gap-3 mb-4">
-                            <span className="px-2 py-1 rounded text-xs font-medium bg-white/10 text-white">
-                              {match.league?.name || "League"}
+                            <span className="inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium bg-white/10 text-white">
+                              {getLeagueLogo(match.league?.name || match.competition || "") && (
+                                <Image
+                                  src={getLeagueLogo(match.league?.name || match.competition || "")!}
+                                  alt={match.league?.name || match.competition || "League"}
+                                  width={12}
+                                  height={12}
+                                  className="object-contain"
+                                />
+                              )}
+                              {match.league?.name || match.competition || "League"}
                             </span>
                             <span className="text-xs text-white/60">
                               {formatDateTime(match.scheduled_at)}

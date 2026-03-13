@@ -34,12 +34,38 @@ export async function GET(req: Request) {
 
       if (userPlayers && userPlayers.length > 0) {
         const playerIds = userPlayers.map((up) => up.player_id);
+
+        // Fetch players with their team details
         const { data: players } = await supabase
           .from("players")
-          .select("*, team:teams(id, name, short_name, logo)")
+          .select(
+            "*, team:teams(id, name, short_name, logo, primary_color, secondary_color)",
+          )
           .in("id", playerIds);
 
-        const playersMap = new Map(players?.map((p) => [p.id, p]) || []);
+        // Fetch points for these players
+        const { data: pointsData } = await supabase
+          .from("player_gameweek_points")
+          .select("player_id, gw_points")
+          .in("player_id", playerIds);
+
+        // Aggregate points by player_id
+        const pointsMap = new Map<string, number>();
+        pointsData?.forEach((p) => {
+          const current = pointsMap.get(p.player_id) || 0;
+          pointsMap.set(p.player_id, current + (p.gw_points || 0));
+        });
+
+        const playersMap = new Map(
+          players?.map((p) => [
+            p.id,
+            {
+              ...p,
+              total_points: pointsMap.get(p.id) || 0,
+            },
+          ]) || [],
+        );
+
         const userPlayersWithDetails = userPlayers.map((up) => ({
           ...up,
           player: playersMap.get(up.player_id),

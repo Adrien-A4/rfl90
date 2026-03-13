@@ -51,7 +51,6 @@ export interface Player {
   image: string;
   position: PlayerPosition;
   tier: string;
-  age: number;
   nationality: string;
   height: number;
   weight: number;
@@ -61,13 +60,14 @@ export interface Player {
   transfer_value: number;
   created_at: string;
   total_points?: number;
+  roblox_username?: string;
 }
 
 export interface PlayerGameweekPoints {
   id: string;
   player_id: string;
   gameweek: number;
-  points: number;
+  gw_points: number;
   created_at: string;
   updated_at: string;
 }
@@ -110,6 +110,8 @@ export interface Match {
   round: string;
   venue: string;
   referee: string;
+  home_difficulty: number;
+  away_difficulty: number;
   created_at: string;
 }
 

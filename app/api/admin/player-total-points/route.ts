@@ -17,13 +17,13 @@ export async function GET(req: Request) {
 
     const { data, error } = await supabase
       .from("player_gameweek_points")
-      .select("points")
+      .select("gw_points")
       .eq("player_id", playerId);
 
     if (error) throw error;
 
     const totalPoints = data.reduce(
-      (sum, record) => sum + (record.points || 0),
+      (sum, record) => sum + (record.gw_points || 0),
       0,
     );
 

@@ -73,7 +73,6 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-
     const { data, error } = await supabase
       .from("user_players")
       .insert({
@@ -90,6 +89,20 @@ export async function POST(req: Request) {
       .single();
 
     if (error) throw error;
+    if (purchasePrice) {
+      const { data: teamData, error: teamError } = await supabase
+        .from("user_teams")
+        .select("budget")
+        .eq("id", userTeamId)
+        .single();
+
+      if (!teamError && teamData) {
+        await supabase
+          .from("user_teams")
+          .update({ budget: teamData.budget - purchasePrice })
+          .eq("id", userTeamId);
+      }
+    }
 
     return NextResponse.json({ success: true, userPlayer: data });
   } catch (err) {
@@ -153,7 +166,21 @@ export async function DELETE(req: Request) {
 
     const supabase = getServerSupabase();
 
+    let purchasePrice = 0;
+    let targetUserTeamId = userTeamId;
+
     if (id) {
+      const { data: userPlayer } = await supabase
+        .from("user_players")
+        .select("purchase_price, user_team_id")
+        .eq("id", id)
+        .single();
+
+      if (userPlayer) {
+        purchasePrice = userPlayer.purchase_price || 0;
+        targetUserTeamId = userPlayer.user_team_id;
+      }
+
       const { error } = await supabase
         .from("user_players")
         .delete()
@@ -161,6 +188,17 @@ export async function DELETE(req: Request) {
 
       if (error) throw error;
     } else if (userTeamId && playerId) {
+      const { data: userPlayer } = await supabase
+        .from("user_players")
+        .select("purchase_price")
+        .eq("user_team_id", userTeamId)
+        .eq("player_id", playerId)
+        .single();
+
+      if (userPlayer) {
+        purchasePrice = userPlayer.purchase_price || 0;
+      }
+
       const { error } = await supabase
         .from("user_players")
         .delete()
@@ -173,6 +211,21 @@ export async function DELETE(req: Request) {
         { error: "Either ID or userTeamId and playerId are required" },
         { status: 400 },
       );
+    }
+
+    if (purchasePrice && targetUserTeamId) {
+      const { data: teamData, error: teamError } = await supabase
+        .from("user_teams")
+        .select("budget")
+        .eq("id", targetUserTeamId)
+        .single();
+
+      if (!teamError && teamData) {
+        await supabase
+          .from("user_teams")
+          .update({ budget: teamData.budget + purchasePrice })
+          .eq("id", targetUserTeamId);
+      }
     }
 
     return NextResponse.json({ success: true });

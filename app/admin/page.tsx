@@ -63,8 +63,8 @@ interface Player {
   team_id: string;
   position: string;
   tier: string;
-  age: number;
   nationality: string;
+  roblox_username?: string;
   market_value?: number;
   transfer_value?: number;
 }
@@ -75,6 +75,8 @@ interface Match {
   home_team_id: string;
   away_team_id: string;
   home_score: number;
+  home_difficulty: number;
+  away_difficulty: number;
   away_score: number;
   status: string;
   competition: string;
@@ -134,6 +136,65 @@ export default function AdminPage() {
     {},
   );
   const [loadingPoints, setLoadingPoints] = useState(false);
+  const [fetchingAvatar, setFetchingAvatar] = useState(false);
+
+  const fetchRobloxAvatar = async (username: string) => {
+    if (!username || username.length < 3) return;
+
+    setFetchingAvatar(true);
+    try {
+      const res = await fetch(
+        `/api/roblox/avatar?username=${encodeURIComponent(username)}`,
+      );
+
+      if (!res.ok) {
+        if (res.status === 429) {
+          toast({
+            title: "Rate Limited",
+            description: "Retrying in 5 seconds...",
+            variant: "default",
+          });
+          setTimeout(() => fetchRobloxAvatar(username), 5000);
+          return;
+        }
+        throw new Error("Failed to fetch Roblox data");
+      }
+
+      const data = await res.json();
+      if (data.imageUrl) {
+        setFormData((prev) => ({
+          ...prev,
+          image: data.imageUrl,
+          robloxUsername: username,
+        }));
+        toast({
+          title: "Success",
+          description: "Roblox headshot updated!",
+          variant: "success",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      // We don't show toast for every typing change to avoid spam
+    } finally {
+      setFetchingAvatar(false);
+    }
+  };
+
+  useEffect(() => {
+    const username = formData.robloxUsername as string;
+    if (
+      activeTab === "players" &&
+      modalOpen &&
+      username &&
+      username.length >= 3
+    ) {
+      const timer = setTimeout(() => {
+        fetchRobloxAvatar(username);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [formData.robloxUsername, modalOpen, activeTab]);
 
   const parseTransferValue = (value: string): number => {
     if (!value) return 0;
@@ -271,7 +332,7 @@ export default function AdminPage() {
         );
         const data = await res.json();
         if (data.points && data.points.length > 0) {
-          pointsData[player.id] = data.points[0].points;
+          pointsData[player.id] = data.points[0].gw_points;
         } else {
           pointsData[player.id] = 0;
         }
@@ -328,12 +389,12 @@ export default function AdminPage() {
         teamId: player.team_id,
         position: player.position,
         tier: player.tier,
-        age: player.age,
         nationality: player.nationality,
         marketValue: player.market_value ?? 0,
         transferValue: formatTransferValue(player.transfer_value ?? 0),
         transferValueRaw: player.transfer_value ?? 0,
         gameweekPoints: gameweekPoints[player.id] ?? 0,
+        robloxUsername: player.roblox_username || "",
       });
     } else if (type === "matches") {
       const match = item as Match;
@@ -345,6 +406,8 @@ export default function AdminPage() {
         homeScore: match.home_score ?? 0,
         awayScore: match.away_score ?? 0,
         status: match.status,
+        homeDifficulty: match.home_difficulty ?? 3,
+        awayDifficulty: match.away_difficulty ?? 3,
         competition: match.competition,
         round: match.round,
         scheduledAt: match.scheduled_at,
@@ -443,8 +506,8 @@ export default function AdminPage() {
           teamId: formData.teamId,
           position: formData.position,
           tier: formData.tier,
-          age: formData.age,
           nationality: formData.nationality,
+          robloxUsername: formData.robloxUsername,
           marketValue: formData.marketValue,
           transferValue: formData.transferValueRaw
             ? parseFloat(formData.transferValueRaw as string)
@@ -459,6 +522,8 @@ export default function AdminPage() {
           homeScore: formData.homeScore,
           awayScore: formData.awayScore,
           status: formData.status,
+          homeDifficulty: formData.homeDifficulty,
+          awayDifficulty: formData.awayDifficulty,
           competition: formData.competition,
           round: formData.round,
           scheduledAt: formData.scheduledAt,
@@ -1669,9 +1734,18 @@ export default function AdminPage() {
                               { value: "", label: "Select Tier" },
                               { value: "X", label: "X Class" },
                               { value: "S", label: "S Class" },
+                              { value: "A+", label: "A+ Class" },
+                              { value: "A", label: "A Class" },
+                              { value: "A-", label: "A- Class" },
+                              { value: "B+", label: "B+ Class" },
                               { value: "B", label: "B Class" },
+                              { value: "B-", label: "B- Class" },
+                              { value: "C+", label: "C+ Class" },
                               { value: "C", label: "C Class" },
+                              { value: "C-", label: "C- Class" },
+                              { value: "D+", label: "D+ Class" },
                               { value: "D", label: "D Class" },
+                              { value: "D-", label: "D- Class" },
                             ]}
                           />
                         </div>
@@ -1713,16 +1787,25 @@ export default function AdminPage() {
                         </div>
 
                         <div>
-                          <label className="block text-sm text-white/60 mb-1">
-                            Age
+                          <label className="block text-sm text-white/60 mb-1 flex justify-between">
+                            Roblox Username
+                            {fetchingAvatar && (
+                              <span className="text-blue-400 text-xs animate-pulse">
+                                Fetching...
+                              </span>
+                            )}
                           </label>
-                          <NumberInput
-                            value={(formData.age as number) ?? 25}
-                            onChange={(val) =>
-                              setFormData({ ...formData, age: val })
+                          <input
+                            type="text"
+                            value={(formData.robloxUsername as string) || ""}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                robloxUsername: e.target.value,
+                              })
                             }
-                            min={16}
-                            max={45}
+                            placeholder="Username"
+                            className="w-full px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg focus:outline-none focus:border-white/20 transition-all text-white"
                           />
                         </div>
                       </div>
