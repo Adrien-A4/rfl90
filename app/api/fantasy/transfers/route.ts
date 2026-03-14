@@ -164,7 +164,15 @@ export async function POST(req: Request) {
     let pointsDeducted = 0;
     let transferCost = 0;
 
-    if (transfersThisGw >= FREE_TRANSFERS_PER_GW) {
+    const isWildcardActive =
+      userTeam.wildcard_used && userTeam.wildcard_used_gw === gameweek;
+    const isFreeHitActive =
+      userTeam.freehit_used && userTeam.freehit_used_gw === gameweek;
+
+    if (isWildcardActive || isFreeHitActive) {
+      isFreeTransfer = true;
+      pointsDeducted = 0;
+    } else if (transfersThisGw >= FREE_TRANSFERS_PER_GW) {
       pointsDeducted = TRANSFER_PENALTY_PER_EXTRA;
       transferCost = 0;
     } else {

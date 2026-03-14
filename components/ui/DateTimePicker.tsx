@@ -142,18 +142,19 @@ export function DateTimePicker({
               <Clock className="h-4 w-4 text-white/60" />
               <span className="text-sm font-medium text-white/60">Time</span>
             </div>
-            
+
             <div className="space-y-4">
-              {/* Hours */}
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-2 block">Hour</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-2 block">
+                  Hour
+                </span>
                 <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1">
                   {hours12.map((hour) => (
                     <button
                       key={hour}
                       type="button"
                       onClick={() => handleTimeChange("hour", hour)}
-                      className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-sm transition-all ${
+                      className={`shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-sm transition-all ${
                         selectedHour === parseInt(hour)
                           ? "bg-white text-black font-bold"
                           : "bg-white/5 text-white/70 hover:bg-white/10"
@@ -164,17 +165,30 @@ export function DateTimePicker({
                   ))}
                 </div>
               </div>
-
-              {/* Minutes */}
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-2 block">Minute</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-2 block">
+                  Minute
+                </span>
                 <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1">
-                  {["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"].map((minute) => (
+                  {[
+                    "00",
+                    "05",
+                    "10",
+                    "15",
+                    "20",
+                    "25",
+                    "30",
+                    "35",
+                    "40",
+                    "45",
+                    "50",
+                    "55",
+                  ].map((minute) => (
                     <button
                       key={minute}
                       type="button"
                       onClick={() => handleTimeChange("minute", minute)}
-                      className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-sm transition-all ${
+                      className={`shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-sm transition-all ${
                         selectedMinute === minute
                           ? "bg-white text-black font-bold"
                           : "bg-white/5 text-white/70 hover:bg-white/10"
@@ -185,8 +199,6 @@ export function DateTimePicker({
                   ))}
                 </div>
               </div>
-
-              {/* AM/PM */}
               <div className="flex gap-2">
                 <button
                   type="button"

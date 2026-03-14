@@ -44,8 +44,6 @@ export async function POST(req: Request) {
     }
 
     const supabase = getServerSupabase();
-
-    // Try to insert, if it fails due to unique constraint, update instead
     const { data, error } = await supabase
       .from("player_gameweek_points")
       .upsert(

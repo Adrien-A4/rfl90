@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-helpers";
+import { INITIAL_BUDGET } from "@/lib/formations";
 
 export async function GET(req: Request) {
   try {
@@ -97,9 +98,10 @@ export async function POST(req: Request) {
         .single();
 
       if (!teamError && teamData) {
+        const newBudget = Math.max(teamData.budget - purchasePrice, 0);
         await supabase
           .from("user_teams")
-          .update({ budget: teamData.budget - purchasePrice })
+          .update({ budget: newBudget })
           .eq("id", userTeamId);
       }
     }
@@ -221,9 +223,13 @@ export async function DELETE(req: Request) {
         .single();
 
       if (!teamError && teamData) {
+        const newBudget = Math.min(
+          teamData.budget + purchasePrice,
+          INITIAL_BUDGET,
+        );
         await supabase
           .from("user_teams")
-          .update({ budget: teamData.budget + purchasePrice })
+          .update({ budget: newBudget })
           .eq("id", targetUserTeamId);
       }
     }

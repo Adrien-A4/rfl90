@@ -520,14 +520,23 @@ $$ LANGUAGE plpgsql;
 
 -- Trigger function to call recalculate when player points change
 CREATE OR REPLACE FUNCTION trigger_recalculate_from_player_points()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $
+DECLARE
+    related_user_team_id UUID;
 BEGIN
-    PERFORM recalculate_user_team_points(user_team_id)
-    FROM user_players
-    WHERE player_id = NEW.player_id;
+    -- Get the user_team_id from user_players for this player
+    SELECT DISTINCT up.user_team_id INTO related_user_team_id
+    FROM user_players up
+    WHERE up.player_id = NEW.player_id
+    LIMIT 1;
+    
+    IF related_user_team_id IS NOT NULL THEN
+        PERFORM recalculate_user_team_points(related_user_team_id);
+    END IF;
+    
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$ LANGUAGE plpgsql;
 
 -- Trigger function to call recalculate when team roster changes
 CREATE OR REPLACE FUNCTION trigger_recalculate_from_roster_change()

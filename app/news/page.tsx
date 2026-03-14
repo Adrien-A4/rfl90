@@ -42,14 +42,11 @@ const NewsPage = () => {
     if (!categoryName) return { logo: null, name: categoryName };
     const trimmedName = categoryName.trim().toLowerCase();
 
-    // First try exact match
     let league = leagues.find(
       (l) =>
         l.name.toLowerCase() === trimmedName ||
         l.short_name?.toLowerCase() === trimmedName,
     );
-
-    // If no exact match, try partial match
     if (!league) {
       league = leagues.find(
         (l) =>

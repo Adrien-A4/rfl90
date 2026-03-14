@@ -40,8 +40,6 @@ export async function GET(req: Request) {
 
     const { data: players, error } = await query;
     if (error) throw error;
-
-    // Fetch total points for all players
     const { data: pointsData } = await supabase
       .from("player_gameweek_points")
       .select("player_id, gw_points");

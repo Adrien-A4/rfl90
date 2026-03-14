@@ -277,7 +277,6 @@ export default function AdminPage() {
       }
     } catch (err) {
       console.error(err);
-      // We don't show toast for every typing change to avoid spam
     } finally {
       setFetchingAvatar(false);
     }

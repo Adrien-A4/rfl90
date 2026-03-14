@@ -8,10 +8,18 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import Image from "next/image";
-import { X, Search } from "lucide-react";
+import {
+  X,
+  Search,
+  XCircle,
+  Shuffle,
+  RefreshCcw,
+  Rocket,
+  Crown,
+  Clock,
+} from "lucide-react";
 import {
   formations,
   getFormationByName,
@@ -83,6 +91,7 @@ interface UserTeam {
   freehit_used?: boolean;
   bench_boost_used?: boolean;
   triple_captain_used?: boolean;
+  calculated_total_points?: number;
 }
 
 interface Gameweek {
@@ -145,6 +154,7 @@ export default function FantasyPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [userTeam, setUserTeam] = useState<UserTeam | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [teams, setTeams] = useState<{ id: string; name: string }[]>([]);
   const [currentGameweek, setCurrentGameweek] = useState<Gameweek | null>(null);
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [loading, setLoading] = useState(true);
@@ -169,6 +179,28 @@ export default function FantasyPage() {
   const [showChipModal, setShowChipModal] = useState(false);
   const [activeChip, setActiveChip] = useState<string | null>(null);
 
+  const isDeadlinePassed = currentGameweek?.deadline
+    ? new Date(currentGameweek.deadline) < new Date()
+    : false;
+
+  const canMakeTransfers = !isDeadlinePassed;
+
+  const anyChipUsedThisGW = !!(
+    userTeam &&
+    currentGameweek &&
+    ((userTeam.wildcard_used &&
+      (userTeam as any).wildcard_used_gw === currentGameweek.gameweek_number) ||
+      (userTeam.freehit_used &&
+        (userTeam as any).freehit_used_gw ===
+          currentGameweek.gameweek_number) ||
+      (userTeam.bench_boost_used &&
+        (userTeam as any).bench_boost_used_gw ===
+          currentGameweek.gameweek_number) ||
+      (userTeam.triple_captain_used &&
+        (userTeam as any).triple_captain_used_gw ===
+          currentGameweek.gameweek_number))
+  );
+
   useEffect(() => {
     checkAuth();
   }, []);
@@ -177,15 +209,21 @@ export default function FantasyPage() {
     if (userId) {
       fetchUserTeam();
       fetchCurrentGameweek();
+      fetchTeams();
     }
   }, [userId]);
 
   useEffect(() => {
     if (userTeam) {
       fetchPlayers();
-      fetchFixtures();
     }
   }, [userTeam]);
+
+  useEffect(() => {
+    if (teams.length > 0 || players.length > 0) {
+      fetchFixtures();
+    }
+  }, [teams, players]);
 
   const checkAuth = async () => {
     try {
@@ -242,6 +280,18 @@ export default function FantasyPage() {
     }
   };
 
+  const fetchTeams = async () => {
+    try {
+      const res = await fetch("/api/admin/teams");
+      const data = await res.json();
+      if (data.teams) {
+        setTeams(data.teams);
+      }
+    } catch (error) {
+      console.error("Failed to fetch teams:", error);
+    }
+  };
+
   const fetchPlayers = async () => {
     if (!userTeam) return;
     try {
@@ -254,24 +304,22 @@ export default function FantasyPage() {
   };
 
   const fetchFixtures = async () => {
-    if (!userTeam) return;
-
     let allTeamIds: string[] = [];
 
-    if (userTeam.players && userTeam.players.length > 0) {
+    if (teams.length > 0) {
+      allTeamIds = teams.map((t) => t.id).filter(Boolean);
+    } else if (userTeam?.players && userTeam.players.length > 0) {
       allTeamIds = [
         ...new Set(
           userTeam.players.map((p) => p.player.team_id).filter(Boolean),
         ),
       ];
+    } else if (players.length > 0) {
+      allTeamIds = [...new Set(players.map((p) => p.team_id).filter(Boolean))];
     }
 
     if (allTeamIds.length === 0) {
-      if (players.length > 0) {
-        allTeamIds = [
-          ...new Set(players.map((p) => p.team_id).filter(Boolean)),
-        ];
-      }
+      return;
     }
 
     const allFixtures: Fixture[] = [];
@@ -361,6 +409,15 @@ export default function FantasyPage() {
   ) => {
     if (!userTeam) return;
 
+    if (!canMakeTransfers) {
+      toast({
+        title: "Transfers Closed",
+        description: "The transfer window has closed for this gameweek",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const player = players.find((p) => p.id === playerId);
     if (!player) return;
 
@@ -380,7 +437,23 @@ export default function FantasyPage() {
       allowedPositions && allowedPositions.length > 0
         ? allowedPositions
         : [position];
-    if (!validPositions.includes(player.position)) {
+
+    const DEF_POSITIONS = ["CB", "LB", "RB", "LWB", "RWB"];
+    const FWD_POSITIONS = ["ST", "CF", "LW", "RW"];
+    const getPositionCategory = (pos: string): string => {
+      if (pos === "GK") return "GK";
+      if (pos === "DEF") return "DEF";
+      if (pos === "FWD") return "FWD";
+      if (DEF_POSITIONS.includes(pos)) return "DEF";
+      if (FWD_POSITIONS.includes(pos)) return "FWD";
+      return "MID";
+    };
+
+    const playerCategory = getPositionCategory(player.position);
+    const allowedCategories = validPositions.map(getPositionCategory);
+    const isPositionAllowed = allowedCategories.includes(playerCategory);
+
+    if (!isPositionAllowed) {
       toast({
         title: "Invalid Position",
         description: `You can only add ${validPositions.join(", ")} players to the ${position} position!`,
@@ -466,6 +539,15 @@ export default function FantasyPage() {
 
   const makeTransfer = async (playerInId: string, playerOutId: string) => {
     if (!userTeam || !currentGameweek) return;
+
+    if (!canMakeTransfers) {
+      toast({
+        title: "Transfers Closed",
+        description: "The transfer window has closed for this gameweek",
+        variant: "destructive",
+      });
+      return;
+    }
     try {
       const playerToAdd = players.find((p) => p.id === playerInId);
       if (!playerToAdd) return;
@@ -601,7 +683,39 @@ export default function FantasyPage() {
     setPickerMode(mode);
     setPlayerToReplace(replaceId || null);
     setPickerIsStarting(isStarting);
-    setShowPlayerPicker(true);
+
+    const allPlayerTeamIds = [
+      ...new Set(players.map((p) => p.team_id).filter(Boolean)),
+    ];
+    const currentFixtureTeamIds = new Set(fixtures.map((f) => f.team.id));
+    const missingTeamIds = allPlayerTeamIds.filter(
+      (id) => !currentFixtureTeamIds.has(id),
+    );
+
+    const openPicker = () => {
+      setShowPlayerPicker(true);
+    };
+
+    if (missingTeamIds.length > 0) {
+      const loadMissingFixtures = async () => {
+        const allFixtures = [...fixtures];
+        for (const teamId of missingTeamIds) {
+          try {
+            const res = await fetch(`/api/fantasy/fixtures?teamId=${teamId}`);
+            const data = await res.json();
+            if (data.fixtures) {
+              allFixtures.push(...data.fixtures);
+            }
+          } catch (error) {
+            console.error("Failed to fetch fixtures:", error);
+          }
+        }
+        setFixtures(allFixtures);
+      };
+      loadMissingFixtures().then(openPicker);
+    } else {
+      openPicker();
+    }
   };
 
   const getSquadPlayers = () => {
@@ -624,6 +738,8 @@ export default function FantasyPage() {
 
     const getPositionCategory = (position: string): string => {
       if (position === "GK") return "GK";
+      if (position === "DEF") return "DEF";
+      if (position === "FWD") return "FWD";
       if (DEF_POSITIONS.includes(position)) return "DEF";
       if (FWD_POSITIONS.includes(position)) return "FWD";
       return "MID";
@@ -844,7 +960,7 @@ export default function FantasyPage() {
                   <p className="text-xs text-muted-foreground">
                     {userTeam.transfers_this_gw >= FREE_TRANSFERS_PER_GW
                       ? `-${TRANSFER_PENALTY_PER_EXTRA}pts after free`
-                      : "free"}
+                      : ""}
                   </p>
                 </CardContent>
               </Card>
@@ -858,69 +974,141 @@ export default function FantasyPage() {
                 <CardContent className="pt-6">
                   <p className="text-sm text-muted-foreground">Points</p>
                   <p className="text-2xl font-bold text-yellow-500">
-                    {userTeam.total_points}
+                    {userTeam.calculated_total_points ?? userTeam.total_points}
                   </p>
                 </CardContent>
               </Card>
             </motion.div>
           </div>
 
-          <div className="flex gap-2 mt-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
             <Button
-              variant={userTeam.wildcard_used ? "outline" : "default"}
-              size="sm"
-              disabled={userTeam.wildcard_used}
+              variant={!!userTeam.wildcard_used ? "outline" : "default"}
+              size="lg"
+              disabled={
+                !!userTeam.wildcard_used ||
+                !canMakeTransfers ||
+                anyChipUsedThisGW
+              }
               onClick={() => {
-                if (!userTeam.wildcard_used) {
+                if (
+                  !userTeam.wildcard_used &&
+                  canMakeTransfers &&
+                  !anyChipUsedThisGW
+                ) {
                   setActiveChip("wildcard");
                   setShowChipModal(true);
                 }
               }}
-              className={userTeam.wildcard_used ? "opacity-50" : ""}
+              className={`flex flex-col h-auto py-3 gap-1 relative ${!!userTeam.wildcard_used || !canMakeTransfers || anyChipUsedThisGW ? "opacity-50" : ""}`}
             >
-              {userTeam.wildcard_used ? "✓ Wildcard" : "Wildcard"}
+              {!userTeam.wildcard_used &&
+                canMakeTransfers &&
+                !anyChipUsedThisGW && (
+                  <span className="absolute -top-1 -right-1 bg-yellow-500 text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                    1
+                  </span>
+                )}
+              <Shuffle className="w-5 h-5" />
+              <span className="text-xs font-medium">
+                {userTeam.wildcard_used ? "✓ Wildcard" : "Wildcard"}
+              </span>
             </Button>
             <Button
-              variant={userTeam.freehit_used ? "outline" : "default"}
-              size="sm"
-              disabled={userTeam.freehit_used}
+              variant={!!userTeam.freehit_used ? "outline" : "default"}
+              size="lg"
+              disabled={
+                !!userTeam.freehit_used ||
+                !canMakeTransfers ||
+                anyChipUsedThisGW
+              }
               onClick={() => {
-                if (!userTeam.freehit_used) {
+                if (
+                  !userTeam.freehit_used &&
+                  canMakeTransfers &&
+                  !anyChipUsedThisGW
+                ) {
                   setActiveChip("freehit");
                   setShowChipModal(true);
                 }
               }}
-              className={userTeam.freehit_used ? "opacity-50" : ""}
+              className={`flex flex-col h-auto py-3 gap-1 relative ${!!userTeam.freehit_used || !canMakeTransfers || anyChipUsedThisGW ? "opacity-50" : ""}`}
             >
-              {userTeam.freehit_used ? "✓ Free Hit" : "Free Hit"}
+              {!userTeam.freehit_used &&
+                canMakeTransfers &&
+                !anyChipUsedThisGW && (
+                  <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                    1
+                  </span>
+                )}
+              <RefreshCcw className="w-5 h-5" />
+              <span className="text-xs font-medium">
+                {userTeam.freehit_used ? "✓ Free Hit" : "Free Hit"}
+              </span>
             </Button>
             <Button
-              variant={userTeam.bench_boost_used ? "outline" : "default"}
-              size="sm"
-              disabled={userTeam.bench_boost_used}
+              variant={!!userTeam.bench_boost_used ? "outline" : "default"}
+              size="lg"
+              disabled={
+                !!userTeam.bench_boost_used ||
+                !canMakeTransfers ||
+                anyChipUsedThisGW
+              }
               onClick={() => {
-                if (!userTeam.bench_boost_used) {
+                if (
+                  !userTeam.bench_boost_used &&
+                  canMakeTransfers &&
+                  !anyChipUsedThisGW
+                ) {
                   setActiveChip("bench_boost");
                   setShowChipModal(true);
                 }
               }}
-              className={userTeam.bench_boost_used ? "opacity-50" : ""}
+              className={`flex flex-col h-auto py-3 gap-1 relative ${!!userTeam.bench_boost_used || !canMakeTransfers || anyChipUsedThisGW ? "opacity-50" : ""}`}
             >
-              {userTeam.bench_boost_used ? "✓ Bench Boost" : "Bench Boost"}
+              {!userTeam.bench_boost_used &&
+                canMakeTransfers &&
+                !anyChipUsedThisGW && (
+                  <span className="absolute -top-1 -right-1 bg-green-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                    1
+                  </span>
+                )}
+              <Rocket className="w-5 h-5" />
+              <span className="text-xs font-medium">
+                {userTeam.bench_boost_used ? "✓ Bench Boost" : "Bench Boost"}
+              </span>
             </Button>
             <Button
-              variant={userTeam.triple_captain_used ? "outline" : "default"}
-              size="sm"
-              disabled={userTeam.triple_captain_used}
+              variant={!!userTeam.triple_captain_used ? "outline" : "default"}
+              size="lg"
+              disabled={
+                !!userTeam.triple_captain_used ||
+                !canMakeTransfers ||
+                anyChipUsedThisGW
+              }
               onClick={() => {
-                if (!userTeam.triple_captain_used) {
+                if (
+                  !userTeam.triple_captain_used &&
+                  canMakeTransfers &&
+                  !anyChipUsedThisGW
+                ) {
                   setActiveChip("triple_captain");
                   setShowChipModal(true);
                 }
               }}
-              className={userTeam.triple_captain_used ? "opacity-50" : ""}
+              className={`flex flex-col h-auto py-3 gap-1 relative ${userTeam.triple_captain_used || !canMakeTransfers || anyChipUsedThisGW ? "opacity-50" : ""}`}
             >
-              {userTeam.triple_captain_used ? "✓ Triple C" : "Triple C"}
+              {!userTeam.triple_captain_used &&
+                canMakeTransfers &&
+                !anyChipUsedThisGW && (
+                  <span className="absolute -top-1 -right-1 bg-purple-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                    1
+                  </span>
+                )}
+              <Crown className="w-5 h-5" />
+              <span className="text-xs font-medium">
+                {userTeam.triple_captain_used ? "✓ Triple C" : "Triple C"}
+              </span>
             </Button>
           </div>
         </motion.div>
@@ -1011,6 +1199,11 @@ export default function FantasyPage() {
                       const isCaptain = squadPlayer?.id === userTeam.captain_id;
                       const isViceCaptain =
                         squadPlayer?.id === userTeam.vice_captain_id;
+                      const isTripleCaptainActive =
+                        userTeam.triple_captain_used &&
+                        currentGameweek &&
+                        (userTeam as any).triple_captain_used_gw ===
+                          currentGameweek.gameweek_number;
 
                       return (
                         <motion.div
@@ -1034,6 +1227,24 @@ export default function FantasyPage() {
                                 >
                                   <X className="w-3 h-3 text-white font-bold" />
                                 </button>
+                                {(isCaptain || isViceCaptain) && (
+                                  <div
+                                    className="absolute -top-2 -left-2 w-6 h-5 rounded-full flex items-center justify-center text-[9px] font-bold z-20"
+                                    style={{
+                                      backgroundColor: isCaptain
+                                        ? isTripleCaptainActive
+                                          ? "#ef4444"
+                                          : "#eab308"
+                                        : "#60a5fa",
+                                    }}
+                                  >
+                                    {isCaptain
+                                      ? isTripleCaptainActive
+                                        ? "x3"
+                                        : "x2"
+                                      : "VC"}
+                                  </div>
+                                )}
                                 <motion.div
                                   whileHover={{ scale: 1.05 }}
                                   whileTap={{ scale: 0.95 }}
@@ -1071,18 +1282,6 @@ export default function FantasyPage() {
                                       {squadPlayer.player.short_name}
                                     </span>
                                   )}
-                                  {(isCaptain || isViceCaptain) && (
-                                    <div
-                                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
-                                      style={{
-                                        backgroundColor: isCaptain
-                                          ? "#eab308"
-                                          : "#60a5fa",
-                                      }}
-                                    >
-                                      {isCaptain ? "C" : "VC"}
-                                    </div>
-                                  )}
                                 </motion.div>
                               </>
                             ) : (
@@ -1090,14 +1289,14 @@ export default function FantasyPage() {
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => {
-                                  const existingInPosition = squadPlayers.find(
-                                    (sp) => sp.squad_position === pos.position,
+                                  const existingInSlot = squadPlayers.find(
+                                    (sp) => sp.slot_id === pos.id,
                                   );
-                                  if (existingInPosition) {
+                                  if (existingInSlot) {
                                     openPlayerPicker(
                                       pos.position,
                                       "replace",
-                                      existingInPosition.id,
+                                      existingInSlot.id,
                                       pos.allowedPositions,
                                       pos.id,
                                       true,
@@ -1272,7 +1471,7 @@ export default function FantasyPage() {
             </motion.div>
 
             {squadPlayers.length > 0 && (
-              <Card>
+              <Card className={isDeadlinePassed ? "border-red-500" : ""}>
                 <CardHeader>
                   <CardTitle>Transfer window deadline</CardTitle>
                 </CardHeader>
@@ -1282,6 +1481,12 @@ export default function FantasyPage() {
                       ? new Date(currentGameweek.deadline).toLocaleString()
                       : "N/A"}
                   </span>
+                  {isDeadlinePassed && (
+                    <div className="flex items-center gap-1 text-red-500 font-bold">
+                      <XCircle className="w-4 h-4" />
+                      <span>CLOSED</span>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}

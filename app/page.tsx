@@ -200,8 +200,6 @@ const RFL = () => {
     }
 
     const diff = scheduledDate.getTime() - now.getTime();
-
-    // If it's starting within 10 minutes
     if (diff > 0 && diff < 10 * 60 * 1000) {
       return { label: "Starting soon", type: "upcoming" };
     }

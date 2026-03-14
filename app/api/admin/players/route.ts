@@ -23,8 +23,6 @@ export async function GET(req: Request) {
 
     const { data, error } = await query;
     if (error) throw error;
-
-    // Fetch total points for each player
     const playersWithPoints = await Promise.all(
       (data || []).map(async (player) => {
         const { data: pointsData } = await supabase

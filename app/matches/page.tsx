@@ -99,14 +99,12 @@ function MatchesContent() {
     if (!leagueName) return { logo: null, name: leagueName };
     const trimmedName = leagueName.trim().toLowerCase();
 
-    // First try exact match
     let league = leaguesData.find(
       (l) =>
         l.name.toLowerCase() === trimmedName ||
         l.short_name?.toLowerCase() === trimmedName,
     );
 
-    // If no exact match, try partial match
     if (!league) {
       league = leaguesData.find(
         (l) =>
