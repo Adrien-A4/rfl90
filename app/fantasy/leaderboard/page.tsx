@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import RedirectWithFadeButton from "../../components/RedirectWithFadeButton";
 import SettingsMenu from "../../components/SettingsMenu";
 import Image from "next/image";
+import Loader from "@/components/ui/spinner";
 
 type League = {
   id: string;
@@ -103,7 +104,11 @@ const LeaderboardPage = () => {
     if (rank === 0) return <Medal className="w-5 h-5 text-yellow-400" />;
     if (rank === 1) return <Medal className="w-5 h-5 text-gray-400" />;
     if (rank === 2) return <Medal className="w-5 h-5 text-amber-600" />;
-    return <span className="text-sm font-semibold text-muted-foreground/60 w-5 text-center">{rank + 1}</span>;
+    return (
+      <span className="text-sm font-semibold text-muted-foreground/60 w-5 text-center">
+        {rank + 1}
+      </span>
+    );
   };
 
   return (
@@ -122,8 +127,17 @@ const LeaderboardPage = () => {
         <div className="max-w-400 mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-8">
-              <h1 className="text-2xl font-bold tracking-tight cursor-pointer" onClick={() => router.push("/")}>
-                <Image src="/rff.png" alt="Real Futbol Fantasy" width={80} height={80} />
+              <h1
+                className="text-2xl font-bold tracking-tight cursor-pointer"
+                onClick={() => router.push("/")}
+              >
+                <Image
+                  src="/rff.png"
+                  alt="Real Futbol Fantasy"
+                  width={80}
+                  draggable={false}
+                  height={80}
+                />
               </h1>
               <div className="relative hidden md:block">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40" />
@@ -137,9 +151,24 @@ const LeaderboardPage = () => {
               </div>
             </div>
             <nav className="flex items-center gap-6">
-              <a href="/news" className="text-sm font-medium text-white/80 hover:text-white">News</a>
-              <a href="/matches" className="text-sm font-medium text-white/80 hover:text-white">Matches</a>
-              <a href="/fantasy" className="text-sm font-medium text-white/80 hover:text-white">Fantasy</a>
+              <a
+                href="/news"
+                className="text-sm font-medium text-white/80 hover:text-white"
+              >
+                News
+              </a>
+              <a
+                href="/matches"
+                className="text-sm font-medium text-white/80 hover:text-white"
+              >
+                Matches
+              </a>
+              <a
+                href="/fantasy"
+                className="text-sm font-medium text-white/80 hover:text-white"
+              >
+                Fantasy
+              </a>
               <SettingsMenu />
             </nav>
           </div>
@@ -154,18 +183,33 @@ const LeaderboardPage = () => {
             className="col-span-3"
           >
             <div className="bg-card rounded-xl p-4 sticky top-24">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/40 mb-4 px-2">Top leagues</h2>
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/40 mb-4 px-2">
+                Top leagues
+              </h2>
               <div className="space-y-1">
                 {leagues.map((league, index) => (
                   <button
                     key={league.id}
-                    onClick={() => router.push(`/matches?league=${encodeURIComponent(league.name)}`)}
+                    onClick={() =>
+                      router.push(
+                        `/matches?league=${encodeURIComponent(league.name)}`,
+                      )
+                    }
                     className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors"
                   >
                     <div className="w-5 h-5 relative shrink-0">
-                      <Image src={league.logo} alt={league.name} width={20} height={20} className="object-contain" />
+                      <Image
+                        src={league.logo}
+                        alt={league.name}
+                        width={20}
+                        draggable={false}
+                        height={20}
+                        className="object-contain"
+                      />
                     </div>
-                    <span className="flex-1 text-left font-medium text-sm">{league.name}</span>
+                    <span className="flex-1 text-left font-medium text-sm">
+                      {league.name}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -173,7 +217,10 @@ const LeaderboardPage = () => {
           </motion.aside>
 
           <main className="col-span-6">
-            <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
+            <motion.div
+              initial={{ y: 10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+            >
               <div className="flex items-center gap-3 mb-6">
                 <Trophy className="w-6 h-6 text-yellow-500" />
                 <h2 className="text-2xl font-bold">Global Leaderboard</h2>
@@ -188,9 +235,13 @@ const LeaderboardPage = () => {
 
                 <div className="divide-y divide-border">
                   {loading ? (
-                    <div className="p-12 text-center text-muted-foreground/60">Loading leaderboard...</div>
+                    <div className="p-12 text-center text-muted-foreground/60">
+                      <Loader size="s" />
+                    </div>
                   ) : filteredLeaderboard.length === 0 ? (
-                    <div className="p-12 text-center text-muted-foreground/60">No teams found matching your search.</div>
+                    <div className="p-12 text-center text-muted-foreground/60">
+                      No teams found matching your search.
+                    </div>
                   ) : (
                     filteredLeaderboard.map((entry, index) => (
                       <motion.div
@@ -208,6 +259,7 @@ const LeaderboardPage = () => {
                                 src={`https://cdn.discordapp.com/avatars/${entry.user_id}/${entry.profiles.avatar}.png`}
                                 alt={entry.profiles.username}
                                 fill
+                                draggable={false}
                                 className="object-cover"
                               />
                             ) : (
@@ -217,12 +269,18 @@ const LeaderboardPage = () => {
                             )}
                           </div>
                           <div>
-                            <div className="font-semibold text-sm">{entry.team_name}</div>
-                            <div className="text-xs text-muted-foreground/60">@{entry.profiles?.username || "Unknown"}</div>
+                            <div className="font-semibold text-sm">
+                              {entry.team_name}
+                            </div>
+                            <div className="text-xs text-muted-foreground/60">
+                              @{entry.profiles?.username || "Unknown"}
+                            </div>
                           </div>
                         </div>
                         <div className="col-span-4 text-right">
-                          <span className="text-lg font-bold text-yellow-500">{entry.total_points.toLocaleString()}</span>
+                          <span className="text-lg font-bold text-yellow-500">
+                            {entry.total_points.toLocaleString()}
+                          </span>
                         </div>
                       </motion.div>
                     ))
@@ -256,11 +314,14 @@ const LeaderboardPage = () => {
                             alt={item.title}
                             width={300}
                             height={169}
+                            draggable={false}
                             className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
                           />
                         )}
                       </div>
-                      <h4 className="font-medium text-sm group-hover:text-white/80 transition-colors line-clamp-2">{item.title}</h4>
+                      <h4 className="font-medium text-sm group-hover:text-white/80 transition-colors line-clamp-2">
+                        {item.title}
+                      </h4>
                     </a>
                   ))}
                 </div>

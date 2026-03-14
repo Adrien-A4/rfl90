@@ -15,6 +15,7 @@ import {
   Trophy,
   Lock,
   FileText,
+  Cloud,
 } from "lucide-react";
 import { useToast } from "@/components/ui/sonner";
 import {
@@ -27,7 +28,14 @@ import { Select } from "./components/Select";
 import { NumberInput } from "./components/NumberInput";
 import { DateTimePicker } from "@/components/ui/DateTimePicker";
 
-type Tab = "teams" | "players" | "matches" | "leagues" | "news" | "gameweeks";
+type Tab =
+  | "teams"
+  | "players"
+  | "matches"
+  | "leagues"
+  | "news"
+  | "gameweeks"
+  | "images";
 
 interface AuthUser {
   id: string;
@@ -137,6 +145,100 @@ export default function AdminPage() {
   );
   const [loadingPoints, setLoadingPoints] = useState(false);
   const [fetchingAvatar, setFetchingAvatar] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [cloudinaryImages, setCloudinaryImages] = useState<
+    {
+      publicId: string;
+      url: string;
+      width?: number;
+      height?: number;
+      description?: string;
+    }[]
+  >([]);
+  const [loadingImages, setLoadingImages] = useState(false);
+  const [deletingImage, setDeletingImage] = useState<string | null>(null);
+
+  const fetchCloudinaryImages = async () => {
+    setLoadingImages(true);
+    try {
+      const res = await fetch("/api/cloudinary?max_results=100");
+      if (res.ok) {
+        const data = await res.json();
+        setCloudinaryImages(data.images || []);
+      }
+    } catch (err) {
+      console.error("Error fetching images:", err);
+    } finally {
+      setLoadingImages(false);
+    }
+  };
+
+  const deleteCloudinaryImage = async (publicId: string) => {
+    try {
+      const res = await fetch("/api/cloudinary", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ publicId }),
+      });
+      if (res.ok) {
+        setCloudinaryImages((prev) =>
+          prev.filter((img) => img.publicId !== publicId),
+        );
+        toast({
+          title: "Success",
+          description: "Image deleted successfully!",
+          variant: "success",
+        });
+      }
+    } catch (err) {
+      console.error("Error deleting image:", err);
+      toast({
+        title: "Error",
+        description: "Failed to delete image",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleImageUpload = async (file: File) => {
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", "news");
+
+      const res = await fetch("/api/cloudinary", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error("Upload failed");
+      }
+
+      const data = await res.json();
+      if (data.image?.url) {
+        setFormData((prev) => ({
+          ...prev,
+          imageUrl: data.image.url,
+        }));
+        toast({
+          title: "Success",
+          description: "Image uploaded successfully!",
+          variant: "success",
+        });
+      }
+    } catch (err) {
+      console.error("Upload error:", err);
+      toast({
+        title: "Error",
+        description: "Failed to upload image",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const fetchRobloxAvatar = async (username: string) => {
     if (!username || username.length < 3) return;
@@ -320,6 +422,12 @@ export default function AdminPage() {
       fetchGameweekPoints();
     }
   }, [currentGameweek, activeTab, isAuthenticated, isAdmin]);
+
+  useEffect(() => {
+    if (activeTab === "images" && isAuthenticated && isAdmin) {
+      fetchCloudinaryImages();
+    }
+  }, [activeTab, isAuthenticated, isAdmin]);
 
   const fetchGameweekPoints = async () => {
     setLoadingPoints(true);
@@ -731,6 +839,7 @@ export default function AdminPage() {
             { id: "matches", label: "Matches", icon: Calendar },
             { id: "news", label: "News", icon: FileText },
             { id: "gameweeks", label: "Gameweeks", icon: Calendar },
+            { id: "images", label: "Images", icon: Cloud },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -1454,6 +1563,100 @@ export default function AdminPage() {
               )}
             </motion.div>
           )}
+
+          {activeTab === "images" && (
+            <motion.div
+              key="images"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="bg-[#1a1a1a] rounded-xl overflow-hidden"
+            >
+              <div className="p-4 border-b border-white/10">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium text-white">
+                    Cloudinary Images
+                  </h3>
+                  <div className="flex gap-2">
+                    <label className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors cursor-pointer disabled:opacity-50">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleImageUpload(file);
+                          }
+                        }}
+                        disabled={uploadingImage}
+                      />
+                      {uploadingImage ? "Uploading..." : "Upload"}
+                    </label>
+                    <button
+                      onClick={fetchCloudinaryImages}
+                      disabled={loadingImages}
+                      className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {loadingImages ? "Loading..." : "Refresh"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              {loadingImages ? (
+                <div className="p-8 text-center text-white/40">
+                  Loading images...
+                </div>
+              ) : cloudinaryImages.length === 0 ? (
+                <div className="p-8 text-center text-white/40">
+                  No images found. Upload images from the News tab.
+                </div>
+              ) : (
+                <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {cloudinaryImages.map((img) => (
+                    <div
+                      key={img.publicId}
+                      className="relative group bg-white/5 rounded-lg overflow-hidden aspect-square"
+                    >
+                      <img
+                        src={img.url}
+                        alt={img.description || "Cloudinary image"}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(img.url);
+                            toast({
+                              title: "Copied",
+                              description: "Image URL copied to clipboard",
+                              variant: "success",
+                            });
+                          }}
+                          className="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors"
+                          title="Copy URL"
+                        >
+                          <FileText className="w-5 h-5 text-white" />
+                        </button>
+                        <button
+                          onClick={() => setDeletingImage(img.publicId)}
+                          className="p-2 bg-red-500/20 hover:bg-red-500/40 rounded-lg transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-5 h-5 text-red-400" />
+                        </button>
+                      </div>
+                      {img.description && (
+                        <div className="absolute bottom-0 left-0 right-0 p-2 bg-black/60 text-white text-xs truncate">
+                          {img.description}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
         </AnimatePresence>
 
         <AnimatePresence>
@@ -1706,18 +1909,15 @@ export default function AdminPage() {
                               { value: "CB", label: "Centre-Back" },
                               { value: "LB", label: "Left-Back" },
                               { value: "RB", label: "Right-Back" },
-                              { value: "DEF", label: "Defender (Generic)" },
                               { value: "CDM", label: "Defensive Midfielder" },
                               { value: "CM", label: "Centre Midfielder" },
                               { value: "CAM", label: "Attacking Midfielder" },
                               { value: "LM", label: "Left Midfielder" },
                               { value: "RM", label: "Right Midfielder" },
-                              { value: "MID", label: "Midfielder (Generic)" },
                               { value: "LW", label: "Left Wing" },
                               { value: "RW", label: "Right Wing" },
                               { value: "ST", label: "Striker" },
                               { value: "CF", label: "Centre Forward" },
-                              { value: "FWD", label: "Forward (Generic)" },
                             ]}
                           />
                         </div>
@@ -1787,7 +1987,7 @@ export default function AdminPage() {
                         </div>
 
                         <div>
-                          <label className="block text-sm text-white/60 mb-1 flex justify-between">
+                          <label className="text-sm text-white/60 mb-1 flex justify-between">
                             Roblox Username
                             {fetchingAvatar && (
                               <span className="text-blue-400 text-xs animate-pulse">
@@ -2183,19 +2383,53 @@ export default function AdminPage() {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm text-white/60 mb-1">
-                            Image URL
+                            Image
                           </label>
-                          <input
-                            type="text"
-                            value={(formData.imageUrl as string) || ""}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                imageUrl: e.target.value,
-                              })
-                            }
-                            className="w-full px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg focus:outline-none focus:border-white/20 transition-all text-white"
-                          />
+                          <div className="space-y-2">
+                            {formData.imageUrl && (
+                              <div className="relative w-full h-32 bg-white/5 rounded-lg overflow-hidden">
+                                <img
+                                  src={formData.imageUrl as string}
+                                  alt="Preview"
+                                  className="w-full h-full object-contain"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setFormData({ ...formData, imageUrl: null })
+                                  }
+                                  className="absolute top-2 right-2 p-1 bg-black/50 rounded-full hover:bg-black/70 transition-colors"
+                                >
+                                  <X className="w-4 h-4 text-white" />
+                                </button>
+                              </div>
+                            )}
+                            <label className="flex items-center justify-center w-full px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg hover:bg-white/5 hover:border-white/20 transition-all cursor-pointer">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    handleImageUpload(file);
+                                  }
+                                }}
+                                disabled={uploadingImage}
+                              />
+                              {uploadingImage ? (
+                                <span className="text-white/60">
+                                  Uploading...
+                                </span>
+                              ) : (
+                                <span className="text-white/60">
+                                  {formData.imageUrl
+                                    ? "Replace Image"
+                                    : "Upload Image"}
+                                </span>
+                              )}
+                            </label>
+                          </div>
                         </div>
                         <div>
                           <label className="block text-sm text-white/60 mb-1">
@@ -2319,6 +2553,40 @@ export default function AdminPage() {
               </button>
               <button
                 onClick={confirmDelete}
+                className="flex-1 px-4 py-2 bg-red-600 rounded-lg text-white font-medium hover:bg-red-700 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={!!deletingImage}
+          onOpenChange={(open) => !open && setDeletingImage(null)}
+        >
+          <DialogContent className="bg-[#1a1a1a] border-white/10 text-white">
+            <DialogHeader>
+              <DialogTitle>Confirm Delete</DialogTitle>
+            </DialogHeader>
+            <p className="text-white/70 py-4">
+              Are you sure you want to delete this image? This action cannot be
+              undone.
+            </p>
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => setDeletingImage(null)}
+                className="flex-1 px-4 py-2 bg-white/5 rounded-lg text-white font-medium hover:bg-white/10 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (deletingImage) {
+                    deleteCloudinaryImage(deletingImage);
+                    setDeletingImage(null);
+                  }
+                }}
                 className="flex-1 px-4 py-2 bg-red-600 rounded-lg text-white font-medium hover:bg-red-700 transition-colors"
               >
                 Delete

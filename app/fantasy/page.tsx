@@ -11,7 +11,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import Image from "next/image";
-import { X } from "lucide-react";
+import { X, Search } from "lucide-react";
 import {
   formations,
   getFormationByName,
@@ -79,6 +79,10 @@ interface UserTeam {
   captain_id?: string;
   vice_captain_id?: string;
   players?: UserPlayer[];
+  wildcard_used?: boolean;
+  freehit_used?: boolean;
+  bench_boost_used?: boolean;
+  triple_captain_used?: boolean;
 }
 
 interface Gameweek {
@@ -117,6 +121,7 @@ interface Fixture {
     primary_color: string;
   };
   difficulty: number;
+  opponentDifficulty: number;
   isHome: boolean;
 }
 
@@ -160,6 +165,9 @@ export default function FantasyPage() {
   const [showCaptainModal, setShowCaptainModal] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showChipModal, setShowChipModal] = useState(false);
+  const [activeChip, setActiveChip] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuth();
@@ -246,10 +254,26 @@ export default function FantasyPage() {
   };
 
   const fetchFixtures = async () => {
-    if (!userTeam?.players) return;
-    const allTeamIds = [
-      ...new Set(userTeam.players.map((p) => p.player.team_id).filter(Boolean)),
-    ];
+    if (!userTeam) return;
+
+    let allTeamIds: string[] = [];
+
+    if (userTeam.players && userTeam.players.length > 0) {
+      allTeamIds = [
+        ...new Set(
+          userTeam.players.map((p) => p.player.team_id).filter(Boolean),
+        ),
+      ];
+    }
+
+    if (allTeamIds.length === 0) {
+      if (players.length > 0) {
+        allTeamIds = [
+          ...new Set(players.map((p) => p.team_id).filter(Boolean)),
+        ];
+      }
+    }
+
     const allFixtures: Fixture[] = [];
 
     for (const teamId of allTeamIds) {
@@ -570,6 +594,7 @@ export default function FantasyPage() {
     slotId?: string,
     isStarting: boolean = true,
   ) => {
+    setSearchQuery("");
     setPickerPosition(position);
     setPickerPositionAllowed(allowedPositions || [position]);
     setPickerSlotId(slotId || null);
@@ -590,33 +615,58 @@ export default function FantasyPage() {
   };
 
   const getPositionPlayers = (pos: string, allowedPositions?: string[]) => {
-    if (!userTeam?.players) {
-      if (allowedPositions && allowedPositions.length > 0) {
-        return players.filter(
-          (p) =>
-            allowedPositions.includes(p.position) &&
-            !players.some(
-              (ep) =>
-                ep.id === p.id &&
-                userTeam?.players?.some((sp) => sp.player_id === p.id),
-            ),
-        );
-      }
-      return players.filter((p) => p.position === pos);
-    }
+    const squadPlayerIds = userTeam?.players
+      ? new Set(userTeam.players.map((p) => p.player_id))
+      : new Set<string>();
 
-    const squadPlayerIds = new Set(userTeam.players.map((p) => p.player_id));
+    const DEF_POSITIONS = ["CB", "LB", "RB", "LWB", "RWB"];
+    const FWD_POSITIONS = ["ST", "CF", "LW", "RW"];
+
+    const getPositionCategory = (position: string): string => {
+      if (position === "GK") return "GK";
+      if (DEF_POSITIONS.includes(position)) return "DEF";
+      if (FWD_POSITIONS.includes(position)) return "FWD";
+      return "MID";
+    };
 
     if (allowedPositions && allowedPositions.length > 0) {
+      const firstAllowed = allowedPositions[0];
+
+      if (
+        ["GK", "DEF", "MID", "FWD"].includes(firstAllowed) &&
+        allowedPositions.length === 4
+      ) {
+        return players.filter((p) => !squadPlayerIds.has(p.id));
+      }
+
+      const targetCategory = getPositionCategory(allowedPositions[0]);
+
+      if (targetCategory === "GK") {
+        return players.filter(
+          (p) => p.position === "GK" && !squadPlayerIds.has(p.id),
+        );
+      }
+
+      return players.filter((p) => {
+        const playerCategory = getPositionCategory(p.position);
+        const isSameCategory = playerCategory === targetCategory;
+        return isSameCategory && !squadPlayerIds.has(p.id);
+      });
+    }
+
+    const targetCategory = getPositionCategory(pos);
+
+    if (targetCategory === "GK") {
       return players.filter(
-        (p) =>
-          allowedPositions.includes(p.position) && !squadPlayerIds.has(p.id),
+        (p) => p.position === "GK" && !squadPlayerIds.has(p.id),
       );
     }
 
-    return players.filter(
-      (p) => p.position === pos && !squadPlayerIds.has(p.id),
-    );
+    return players.filter((p) => {
+      const playerCategory = getPositionCategory(p.position);
+      const isSameCategory = playerCategory === targetCategory;
+      return isSameCategory && !squadPlayerIds.has(p.id);
+    });
   };
 
   const formatBudget = (value: number) => {
@@ -669,6 +719,7 @@ export default function FantasyPage() {
               src="/rff.png"
               alt="Real Futbol Fantasy Logo"
               width={540}
+              draggable={false}
               height={540}
               className="mx-auto mt-4"
             />
@@ -812,6 +863,65 @@ export default function FantasyPage() {
                 </CardContent>
               </Card>
             </motion.div>
+          </div>
+
+          <div className="flex gap-2 mt-4">
+            <Button
+              variant={userTeam.wildcard_used ? "outline" : "default"}
+              size="sm"
+              disabled={userTeam.wildcard_used}
+              onClick={() => {
+                if (!userTeam.wildcard_used) {
+                  setActiveChip("wildcard");
+                  setShowChipModal(true);
+                }
+              }}
+              className={userTeam.wildcard_used ? "opacity-50" : ""}
+            >
+              {userTeam.wildcard_used ? "✓ Wildcard" : "Wildcard"}
+            </Button>
+            <Button
+              variant={userTeam.freehit_used ? "outline" : "default"}
+              size="sm"
+              disabled={userTeam.freehit_used}
+              onClick={() => {
+                if (!userTeam.freehit_used) {
+                  setActiveChip("freehit");
+                  setShowChipModal(true);
+                }
+              }}
+              className={userTeam.freehit_used ? "opacity-50" : ""}
+            >
+              {userTeam.freehit_used ? "✓ Free Hit" : "Free Hit"}
+            </Button>
+            <Button
+              variant={userTeam.bench_boost_used ? "outline" : "default"}
+              size="sm"
+              disabled={userTeam.bench_boost_used}
+              onClick={() => {
+                if (!userTeam.bench_boost_used) {
+                  setActiveChip("bench_boost");
+                  setShowChipModal(true);
+                }
+              }}
+              className={userTeam.bench_boost_used ? "opacity-50" : ""}
+            >
+              {userTeam.bench_boost_used ? "✓ Bench Boost" : "Bench Boost"}
+            </Button>
+            <Button
+              variant={userTeam.triple_captain_used ? "outline" : "default"}
+              size="sm"
+              disabled={userTeam.triple_captain_used}
+              onClick={() => {
+                if (!userTeam.triple_captain_used) {
+                  setActiveChip("triple_captain");
+                  setShowChipModal(true);
+                }
+              }}
+              className={userTeam.triple_captain_used ? "opacity-50" : ""}
+            >
+              {userTeam.triple_captain_used ? "✓ Triple C" : "Triple C"}
+            </Button>
           </div>
         </motion.div>
 
@@ -979,17 +1089,30 @@ export default function FantasyPage() {
                               <motion.button
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
-                                onClick={() =>
-                                  canAddMorePlayers() &&
-                                  openPlayerPicker(
-                                    pos.position,
-                                    "add",
-                                    undefined,
-                                    pos.allowedPositions,
-                                    pos.id,
-                                    true,
-                                  )
-                                }
+                                onClick={() => {
+                                  const existingInPosition = squadPlayers.find(
+                                    (sp) => sp.squad_position === pos.position,
+                                  );
+                                  if (existingInPosition) {
+                                    openPlayerPicker(
+                                      pos.position,
+                                      "replace",
+                                      existingInPosition.id,
+                                      pos.allowedPositions,
+                                      pos.id,
+                                      true,
+                                    );
+                                  } else if (canAddMorePlayers()) {
+                                    openPlayerPicker(
+                                      pos.position,
+                                      "add",
+                                      undefined,
+                                      pos.allowedPositions,
+                                      pos.id,
+                                      true,
+                                    );
+                                  }
+                                }}
                                 className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-secondary border-2 border-dashed border-muted-foreground/20 flex items-center justify-center hover:bg-accent transition-colors"
                               >
                                 <span className="text-xs text-muted-foreground">
@@ -1052,7 +1175,7 @@ export default function FantasyPage() {
                               player.player.position,
                               "replace",
                               player.id,
-                              [player.player.position],
+                              undefined,
                               undefined,
                               false,
                             )
@@ -1175,103 +1298,121 @@ export default function FantasyPage() {
                     - {pickerPosition} {!pickerIsStarting ? "(Bench)" : ""}
                   </DialogTitle>
                 </DialogHeader>
+                <div className="relative mb-4">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40" />
+                  <input
+                    type="text"
+                    placeholder="Search players..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-input border border-border rounded-lg focus:outline-none focus:border-white/20 transition-all text-sm"
+                  />
+                </div>
                 <div className="overflow-y-auto max-h-[60vh] space-y-2">
-                  {getPositionPlayers(
-                    pickerPosition,
-                    pickerPositionAllowed,
-                  ).map((player) => {
-                    const playerTeamFixtures = getPlayerFixtures(
-                      player.team_id,
-                    );
+                  {getPositionPlayers(pickerPosition, pickerPositionAllowed)
+                    .filter((player) => {
+                      if (!searchQuery) return true;
+                      const query = searchQuery.toLowerCase();
+                      return (
+                        player.name.toLowerCase().includes(query) ||
+                        player.short_name.toLowerCase().includes(query) ||
+                        player.team?.name.toLowerCase().includes(query)
+                      );
+                    })
+                    .map((player) => {
+                      const playerTeamFixtures = getPlayerFixtures(
+                        player.team_id,
+                      );
 
-                    return (
-                      <motion.button
-                        key={player.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.2, ease: "easeOut" }}
-                        whileHover={{
-                          scale: 1.02,
-                          backgroundColor: "rgba(255,255,255,0.05)",
-                        }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => {
-                          if (pickerMode === "add") {
-                            addPlayer(
-                              player.id,
-                              pickerPosition,
-                              pickerPositionAllowed,
-                              pickerSlotId,
-                              pickerIsStarting,
-                            );
-                          } else if (playerToReplace) {
-                            makeTransfer(player.id, playerToReplace);
-                          }
-                        }}
-                        className="w-full flex items-center gap-4 p-4 bg-secondary rounded-lg hover:bg-accent transition-colors text-left"
-                      >
-                        <div
-                          className="w-12 h-12 rounded-full flex items-center justify-center overflow-hidden"
-                          style={{
-                            backgroundColor:
-                              player.team?.primary_color || "#333",
+                      return (
+                        <motion.button
+                          key={player.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.2, ease: "easeOut" }}
+                          whileHover={{
+                            backgroundColor: "rgba(255,255,255,0.05)",
                           }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => {
+                            if (pickerMode === "add") {
+                              addPlayer(
+                                player.id,
+                                pickerPosition,
+                                pickerPositionAllowed,
+                                pickerSlotId,
+                                pickerIsStarting,
+                              );
+                            } else if (playerToReplace) {
+                              makeTransfer(player.id, playerToReplace);
+                            }
+                          }}
+                          className="w-full flex items-center gap-4 p-4 bg-secondary rounded-lg hover:bg-accent transition-colors text-left"
                         >
-                          {player.image ? (
-                            <img
-                              src={player.image}
-                              alt={player.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <span className="text-xs font-bold text-white">
-                              {player.short_name}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-foreground">
-                            {player.name}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {player.team?.name}
-                          </p>
-                          {playerTeamFixtures.length > 0 && (
-                            <div className="flex gap-1 mt-1 items-center">
-                              <span className="text-[8px] text-muted-foreground">
-                                Diff:
+                          <div
+                            className="w-12 h-12 rounded-full flex items-center justify-center overflow-hidden"
+                            style={{
+                              backgroundColor:
+                                player.team?.primary_color || "#333",
+                            }}
+                          >
+                            {player.image ? (
+                              <img
+                                src={player.image}
+                                alt={player.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-xs font-bold text-white">
+                                {player.short_name}
                               </span>
-                              {playerTeamFixtures.map((f, i) => (
-                                <div
-                                  key={i}
-                                  className={`w-5 h-5 rounded-full ${getDifficultyColor(
-                                    f.difficulty,
-                                  )} text-[8px] text-white flex items-center justify-center font-bold`}
-                                >
-                                  {f.difficulty}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-purple-400">
-                            {formatBudget(player.transfer_value)}
-                          </p>
-                          <p className="text-xs font-bold text-yellow-500">
-                            {player.total_points || 0} pts
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {player.position}
-                          </p>
-                        </div>
-                      </motion.button>
-                    );
-                  })}
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium text-foreground">
+                              {player.name}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {player.team?.name}
+                            </p>
+                            {playerTeamFixtures.length > 0 && (
+                              <div className="flex gap-1 mt-1 items-center">
+                                <span className="text-[8px] text-muted-foreground">
+                                  Diff:
+                                </span>
+                                {playerTeamFixtures.map((f, i) => (
+                                  <div
+                                    key={i}
+                                    className={`w-5 h-5 rounded-full ${getDifficultyColor(
+                                      f.opponentDifficulty,
+                                    )} text-[8px] text-white flex items-center justify-center font-bold`}
+                                  >
+                                    {f.opponentDifficulty}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-purple-400">
+                              {formatBudget(player.transfer_value)}
+                            </p>
+                            <p className="text-xs font-bold text-yellow-500">
+                              {player.total_points || 0} pts
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {player.position}
+                            </p>
+                          </div>
+                        </motion.button>
+                      );
+                    })}
                   {getPositionPlayers(pickerPosition, pickerPositionAllowed)
                     .length === 0 && (
                     <p className="text-center text-muted-foreground py-8">
-                      No players available for this position
+                      {searchQuery
+                        ? "No players match your search"
+                        : "No players available for this position"}
                     </p>
                   )}
                 </div>
@@ -1354,6 +1495,92 @@ export default function FantasyPage() {
                     className="flex-1 bg-red-600 hover:bg-red-700"
                   >
                     Reset
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence mode="wait">
+          {showChipModal && (
+            <Dialog open={showChipModal} onOpenChange={setShowChipModal}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>
+                    {activeChip === "wildcard" && "Use Wildcard"}
+                    {activeChip === "freehit" && "Use Free Hit"}
+                    {activeChip === "bench_boost" && "Use Bench Boost"}
+                    {activeChip === "triple_captain" && "Use Triple Captain"}
+                  </DialogTitle>
+                </DialogHeader>
+                <p className="text-white/60 py-4">
+                  {activeChip === "wildcard" &&
+                    "Using a Wildcard allows you to make unlimited transfers for this gameweek without any point penalty. This chip can only be used once per season."}
+                  {activeChip === "freehit" &&
+                    "Using a Free Hit allows you to make unlimited transfers for this gameweek only. Your team will revert back to its original state after the gameweek ends."}
+                  {activeChip === "bench_boost" &&
+                    "Using Bench Boost will activate your bench players to score points for this gameweek. This can only be used once per season."}
+                  {activeChip === "triple_captain" &&
+                    "Using Triple Captain will triple your captain's points for this gameweek. This can only be used once per season."}
+                </p>
+                <div className="flex gap-4 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowChipModal(false)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      if (!userTeam || !currentGameweek) return;
+
+                      const chipApiMap: Record<string, string> = {
+                        wildcard: "wildcard",
+                        freehit: "freehit",
+                        bench_boost: "bench_boost",
+                        triple_captain: "triple_captain",
+                      };
+
+                      try {
+                        const res = await fetch("/api/fantasy/chips", {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            userTeamId: userTeam.id,
+                            chip: chipApiMap[activeChip || ""],
+                            gameweekNumber: currentGameweek.gameweek_number,
+                          }),
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                          setUserTeam(data.userTeam);
+                          setShowChipModal(false);
+                          toast({
+                            title: "Chip Activated!",
+                            description: `You used ${activeChip?.replace("_", " ")} for gameweek ${currentGameweek.gameweek_number}`,
+                            variant: "success",
+                          });
+                        } else {
+                          toast({
+                            title: "Error",
+                            description: data.error || "Failed to use chip",
+                            variant: "destructive",
+                          });
+                        }
+                      } catch (error) {
+                        console.error("Failed to use chip:", error);
+                        toast({
+                          title: "Error",
+                          description: "Failed to use chip",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                    className="flex-1"
+                  >
+                    Use Chip
                   </Button>
                 </div>
               </DialogContent>

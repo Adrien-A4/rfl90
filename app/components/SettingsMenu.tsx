@@ -293,6 +293,7 @@ export default function SettingsMenu() {
                         src={getAvatarUrl(user.id, user.avatar)}
                         alt={user.username}
                         width={32}
+                        draggable={false}
                         height={32}
                         className="object-cover"
                       />
@@ -454,10 +455,7 @@ export default function SettingsMenu() {
                           Currency
                         </span>
                         <span className="text-xs text-white/40">
-                          {
-                            currencies.find((c) => c.code === currency)
-                              ?.name
-                          }
+                          {currencies.find((c) => c.code === currency)?.name}
                         </span>
                         <motion.div
                           animate={{
@@ -616,9 +614,8 @@ export default function SettingsMenu() {
                         </span>
                         <span className="text-xs text-white/40">
                           {
-                            temperatureUnits.find(
-                              (t) => t.code === temperature,
-                            )?.name
+                            temperatureUnits.find((t) => t.code === temperature)
+                              ?.name
                           }
                         </span>
                         <motion.div

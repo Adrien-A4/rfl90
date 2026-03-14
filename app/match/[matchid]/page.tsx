@@ -190,6 +190,7 @@ export default function MatchPage({
                       src={match.home_team.logo}
                       alt={match.home_team.name}
                       width={80}
+                      draggable={false}
                       height={80}
                       className="object-cover"
                     />
@@ -235,6 +236,7 @@ export default function MatchPage({
                       src={match.away_team.logo}
                       alt={match.away_team.name}
                       width={80}
+                      draggable={false}
                       height={80}
                       className="object-cover"
                     />

@@ -64,6 +64,7 @@ const LoginPage = () => {
                 src="/discord.png"
                 alt="Discord"
                 width={24}
+                draggable={false}
                 height={24}
                 className="object-contain"
               />
@@ -79,19 +80,6 @@ const LoginPage = () => {
             By continuing, you agree to our Terms of Service and Privacy Policy
           </motion.p>
         </div>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="text-center mt-6"
-        >
-          <p className="text-sm text-muted-foreground/60">
-            You'll be added to the server once you've signed up.{" "}
-            <button className="text-white/80 hover:text-white transition-colors font-medium">
-              Don't agree? Contact the server owner.
-            </button>
-          </p>
-        </motion.div>
       </motion.div>
     </div>
   );

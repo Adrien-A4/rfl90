@@ -95,15 +95,29 @@ function MatchesContent() {
     }
   };
 
-  const getLeagueLogo = (leagueName: string) => {
-    if (!leagueName) return null;
+  const getLeagueInfo = (leagueName: string) => {
+    if (!leagueName) return { logo: null, name: leagueName };
     const trimmedName = leagueName.trim().toLowerCase();
-    const league = leaguesData.find(
+
+    // First try exact match
+    let league = leaguesData.find(
       (l) =>
         l.name.toLowerCase() === trimmedName ||
         l.short_name?.toLowerCase() === trimmedName,
     );
-    return league?.logo;
+
+    // If no exact match, try partial match
+    if (!league) {
+      league = leaguesData.find(
+        (l) =>
+          l.name.toLowerCase().includes(trimmedName) ||
+          trimmedName.includes(l.name.toLowerCase()) ||
+          (l.short_name && l.short_name.toLowerCase().includes(trimmedName)) ||
+          (l.short_name && trimmedName.includes(l.short_name.toLowerCase())),
+      );
+    }
+
+    return { logo: league?.logo, name: league?.name || leagueName };
   };
 
   const leagues = useMemo(() => {
@@ -112,10 +126,10 @@ function MatchesContent() {
       const name = match.league?.name || match.competition;
       if (name) leagueNames.add(name);
     });
-    return Array.from(leagueNames).map((name) => ({
-      name,
-      logo: getLeagueLogo(name),
-    }));
+    return Array.from(leagueNames).map((name) => {
+      const info = getLeagueInfo(name);
+      return { name: info.name, logo: info.logo };
+    });
   }, [matches, leaguesData]);
 
   const filteredMatches = matches.filter((match) => {
@@ -140,8 +154,7 @@ function MatchesContent() {
       ? (match.league?.name || match.competition) === selectedLeague
       : true;
     return matchesSearch && matchesLeague;
-    });
-
+  });
 
   const formatDateTime = (dateStr: string | null) => {
     if (!dateStr) return "TBD";
@@ -158,6 +171,7 @@ function MatchesContent() {
 
   const formatScore = (match: Match) => {
     if (match.home_score == null || match.away_score == null) return "VS";
+    if (match.home_score === 0 && match.away_score === 0) return "VS";
     return `${match.home_score} - ${match.away_score}`;
   };
 
@@ -294,6 +308,7 @@ function MatchesContent() {
                           alt={selectedMatch.home_team.name}
                           width={56}
                           height={56}
+                          draggable={false}
                           className="rounded-full object-contain"
                         />
                       ) : (
@@ -331,6 +346,7 @@ function MatchesContent() {
                           src={selectedMatch.away_team.logo}
                           alt={selectedMatch.away_team.name}
                           width={56}
+                          draggable={false}
                           height={56}
                           className="rounded-full object-contain"
                         />
@@ -346,16 +362,33 @@ function MatchesContent() {
                 <div className="p-8">
                   <div className="flex flex-wrap items-center gap-3 mb-6">
                     <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white">
-                      {getLeagueLogo(selectedMatch.league?.name || selectedMatch.competition || "") && (
+                      {getLeagueInfo(
+                        selectedMatch.league?.name ||
+                          selectedMatch.competition ||
+                          "",
+                      ).logo && (
                         <Image
-                          src={getLeagueLogo(selectedMatch.league?.name || selectedMatch.competition || "")!}
-                          alt={selectedMatch.league?.name || selectedMatch.competition || "League"}
+                          src={
+                            getLeagueInfo(
+                              selectedMatch.league?.name ||
+                                selectedMatch.competition ||
+                                "",
+                            ).logo!
+                          }
+                          alt={
+                            selectedMatch.league?.name ||
+                            selectedMatch.competition ||
+                            "League"
+                          }
                           width={14}
                           height={14}
+                          draggable={false}
                           className="object-contain"
                         />
                       )}
-                      {selectedMatch.league?.name || selectedMatch.competition || "League"}
+                      {selectedMatch.league?.name ||
+                        selectedMatch.competition ||
+                        "League"}
                     </span>
                     <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white">
                       <Calendar className="w-3 h-3" />
@@ -449,6 +482,7 @@ function MatchesContent() {
                             src={league.logo}
                             alt={league.name}
                             width={24}
+                            draggable={false}
                             height={24}
                             className="object-contain"
                           />
@@ -483,16 +517,31 @@ function MatchesContent() {
                         <div className="p-6">
                           <div className="flex flex-wrap items-center gap-3 mb-4">
                             <span className="inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium bg-white/10 text-white">
-                              {getLeagueLogo(match.league?.name || match.competition || "") && (
+                              {getLeagueInfo(
+                                match.league?.name || match.competition || "",
+                              ).logo && (
                                 <Image
-                                  src={getLeagueLogo(match.league?.name || match.competition || "")!}
-                                  alt={match.league?.name || match.competition || "League"}
+                                  src={
+                                    getLeagueInfo(
+                                      match.league?.name ||
+                                        match.competition ||
+                                        "",
+                                    ).logo!
+                                  }
+                                  alt={
+                                    match.league?.name ||
+                                    match.competition ||
+                                    "League"
+                                  }
                                   width={12}
                                   height={12}
+                                  draggable={false}
                                   className="object-contain"
                                 />
                               )}
-                              {match.league?.name || match.competition || "League"}
+                              {match.league?.name ||
+                                match.competition ||
+                                "League"}
                             </span>
                             <span className="text-xs text-white/60">
                               {formatDateTime(match.scheduled_at)}
@@ -509,6 +558,7 @@ function MatchesContent() {
                                   src={match.home_team.logo}
                                   alt={match.home_team.name}
                                   width={40}
+                                  draggable={false}
                                   height={40}
                                   className="rounded-full object-contain"
                                 />
@@ -558,6 +608,7 @@ function MatchesContent() {
                                   src={match.away_team.logo}
                                   alt={match.away_team.name}
                                   width={40}
+                                  draggable={false}
                                   height={40}
                                   className="rounded-full object-contain"
                                 />

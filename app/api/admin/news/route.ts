@@ -125,9 +125,42 @@ export async function DELETE(req: Request) {
     }
 
     const supabase = getServerSupabase();
+
+    const { data: newsItem, error: fetchError } = await supabase
+      .from("news")
+      .select("image_url")
+      .eq("id", id)
+      .single();
+
+    if (fetchError) {
+      console.error("Error fetching news for deletion:", fetchError);
+    }
+
+    const imageUrl = newsItem?.image_url;
+
     const { error } = await supabase.from("news").delete().eq("id", id);
 
     if (error) throw error;
+
+    if (
+      imageUrl &&
+      typeof imageUrl === "string" &&
+      imageUrl.includes("cloudinary")
+    ) {
+      try {
+        const publicIdMatch = imageUrl.match(/\/upload\/(?:v\d+\/)?([^.]+)\./);
+        if (publicIdMatch && publicIdMatch[1]) {
+          const publicId = publicIdMatch[1];
+          await fetch("/api/cloudinary", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ publicId }),
+          });
+        }
+      } catch (cloudinaryError) {
+        console.error("Error deleting image from Cloudinary:", cloudinaryError);
+      }
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {

@@ -38,15 +38,29 @@ const NewsPage = () => {
     fetchLeagues();
   }, []);
 
-  const getLeagueLogo = (categoryName: string) => {
-    if (!categoryName) return null;
-    const trimmedCategory = categoryName.trim().toLowerCase();
-    const league = leagues.find(
+  const getLeagueInfo = (categoryName: string) => {
+    if (!categoryName) return { logo: null, name: categoryName };
+    const trimmedName = categoryName.trim().toLowerCase();
+
+    // First try exact match
+    let league = leagues.find(
       (l) =>
-        l.name.toLowerCase() === trimmedCategory ||
-        l.short_name?.toLowerCase() === trimmedCategory,
+        l.name.toLowerCase() === trimmedName ||
+        l.short_name?.toLowerCase() === trimmedName,
     );
-    return league?.logo;
+
+    // If no exact match, try partial match
+    if (!league) {
+      league = leagues.find(
+        (l) =>
+          l.name.toLowerCase().includes(trimmedName) ||
+          trimmedName.includes(l.name.toLowerCase()) ||
+          (l.short_name && l.short_name.toLowerCase().includes(trimmedName)) ||
+          (l.short_name && trimmedName.includes(l.short_name.toLowerCase())),
+      );
+    }
+
+    return { logo: league?.logo, name: league?.name || categoryName };
   };
 
   const fetchLeagues = async () => {
@@ -191,6 +205,7 @@ const NewsPage = () => {
                       src={selectedArticle.image_url}
                       alt={selectedArticle.title}
                       fill
+                      draggable={false}
                       className="object-cover"
                       priority
                     />
@@ -219,16 +234,17 @@ const NewsPage = () => {
 
                 <div className="mb-6">
                   <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white mb-4">
-                    {getLeagueLogo(selectedArticle.category) && (
+                    {getLeagueInfo(selectedArticle.category).logo && (
                       <Image
-                        src={getLeagueLogo(selectedArticle.category)!}
-                        alt={selectedArticle.category}
+                        src={getLeagueInfo(selectedArticle.category).logo!}
+                        alt={getLeagueInfo(selectedArticle.category).name}
                         width={14}
+                        draggable={false}
                         height={14}
                         className="object-contain"
                       />
                     )}
-                    {selectedArticle.category}
+                    {getLeagueInfo(selectedArticle.category).name}
                   </span>
                   <h1 className="text-2xl md:text-4xl font-bold mb-4 leading-tight">
                     {selectedArticle.title}
@@ -283,7 +299,7 @@ const NewsPage = () => {
                       <span className="text-sm font-medium">All News</span>
                     </button>
                     {categories.map((category) => {
-                      const logo = getLeagueLogo(category);
+                      const leagueInfo = getLeagueInfo(category);
                       return (
                         <button
                           key={category}
@@ -294,10 +310,11 @@ const NewsPage = () => {
                               : "text-white/60 hover:text-white hover:bg-white/5"
                           }`}
                         >
-                          {logo ? (
+                          {leagueInfo.logo ? (
                             <Image
-                              src={logo}
-                              alt={category}
+                              src={leagueInfo.logo}
+                              alt={leagueInfo.name}
+                              draggable={false}
                               width={16}
                               height={16}
                               className="object-contain shrink-0"
@@ -306,7 +323,7 @@ const NewsPage = () => {
                             <Tag className="w-4 h-4" />
                           )}
                           <span className="text-sm font-medium">
-                            {category}
+                            {leagueInfo.name}
                           </span>
                         </button>
                       );
@@ -337,6 +354,7 @@ const NewsPage = () => {
                               <Image
                                 src={item.image_url}
                                 alt={item.title}
+                                draggable={false}
                                 fill
                                 className="object-cover"
                               />
@@ -345,16 +363,17 @@ const NewsPage = () => {
                           <div className="p-6 flex-1">
                             <div className="flex items-center gap-3 mb-3">
                               <span className="inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium bg-white/10 text-white">
-                                {getLeagueLogo(item.category) && (
+                                {getLeagueInfo(item.category).logo && (
                                   <Image
-                                    src={getLeagueLogo(item.category)!}
-                                    alt={item.category}
+                                    src={getLeagueInfo(item.category).logo!}
+                                    alt={getLeagueInfo(item.category).name}
                                     width={12}
+                                    draggable={false}
                                     height={12}
                                     className="object-contain"
                                   />
                                 )}
-                                {item.category}
+                                {getLeagueInfo(item.category).name}
                               </span>
                               <span className="text-xs text-white/60">
                                 {formatDate(item.created_at)}

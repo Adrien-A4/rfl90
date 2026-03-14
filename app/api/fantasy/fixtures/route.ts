@@ -40,6 +40,9 @@ export async function GET(req: Request) {
         team: isHome ? match.home_team : match.away_team,
         opponent: isHome ? match.away_team : match.home_team,
         difficulty: isHome ? match.home_difficulty : match.away_difficulty,
+        opponentDifficulty: isHome
+          ? match.away_difficulty
+          : match.home_difficulty,
         isHome,
       };
     });

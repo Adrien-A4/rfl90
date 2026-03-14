@@ -386,6 +386,7 @@ const RFL = () => {
                         src={league.logo}
                         alt={league.name}
                         width={20}
+                        draggable={false}
                         height={20}
                         className="object-contain"
                       />
@@ -575,6 +576,7 @@ const RFL = () => {
                                               src={homeTeam.logo}
                                               alt={homeTeam.name || "Home"}
                                               width={20}
+                                              draggable={false}
                                               height={20}
                                               className="object-contain"
                                             />
@@ -610,6 +612,7 @@ const RFL = () => {
                                               alt={awayTeam.name || "Away"}
                                               width={20}
                                               height={20}
+                                              draggable={false}
                                               className="object-contain"
                                             />
                                           )}
@@ -718,6 +721,7 @@ const RFL = () => {
                             src={item.image_url}
                             alt={item.title}
                             width={300}
+                            draggable={false}
                             height={169}
                             className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
                           />
