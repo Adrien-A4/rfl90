@@ -1,19 +1,31 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export function proxy(req: Request) {
-  const host = req.headers.get("host");
+export function proxy(request: NextRequest) {
+  const host = request.headers.get("host") || "";
+  const hostname = host.replace(/^www\./, "");
 
-  if (host === "admin.rff.giize.com") {
-    return NextResponse.rewrite(new URL("/admin", req.url));
+  if (hostname === "admin.rff.giize.com" || hostname === "admin.rffgiize.com") {
+    return NextResponse.rewrite(new URL("/admin", request.url));
   }
 
-  if (host === "status.rff.giize.com") {
-    return NextResponse.rewrite(new URL("/status", req.url));
+  if (
+    hostname === "status.rff.giize.com" ||
+    hostname === "status.rffgiize.com"
+  ) {
+    return NextResponse.rewrite(new URL("/status", request.url));
   }
 
-  if (host === "fantasy.rff.giize.com") {
-    return NextResponse.rewrite(new URL("/fantasy", req.url));
+  if (
+    hostname === "fantasy.rff.giize.com" ||
+    hostname === "fantasy.rffgiize.com"
+  ) {
+    return NextResponse.rewrite(new URL("/fantasy", request.url));
   }
 
   return NextResponse.next();
 }
+
+export const config = {
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+};
