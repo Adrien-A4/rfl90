@@ -238,7 +238,7 @@ function MatchesContent() {
                   Matches
                 </a>
                 <a
-                  href="https://rff.giize.com/fantasy"
+                  href="https://fantasy.rff.giize.com/"
                   className="text-sm font-medium text-white/60 hover:text-white transition-colors"
                 >
                   Fantasy

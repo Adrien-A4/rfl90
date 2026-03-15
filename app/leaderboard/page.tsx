@@ -129,7 +129,7 @@ const LeaderboardPage = () => {
             <div className="flex items-center gap-8">
               <h1
                 className="text-2xl font-bold tracking-tight cursor-pointer"
-                onClick={() => router.push("/")}
+                onClick={() => router.push("https://rff.giize.com/")}
               >
                 <Image
                   src="/rff.png"
@@ -164,7 +164,7 @@ const LeaderboardPage = () => {
                 Matches
               </a>
               <a
-                href="https://rff.giize.com/fantasy"
+                href="https://fantasy.rff.giize.com/"
                 className="text-sm font-medium text-white/80 hover:text-white"
               >
                 Fantasy
@@ -192,7 +192,7 @@ const LeaderboardPage = () => {
                     key={league.id}
                     onClick={() =>
                       router.push(
-                        `/matches?league=${encodeURIComponent(league.name)}`,
+                        `https://rff.giize.com/matches?league=${encodeURIComponent(league.name)}`,
                       )
                     }
                     className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors"
@@ -295,7 +295,7 @@ const LeaderboardPage = () => {
               <div className="bg-card rounded-xl p-6">
                 <h3 className="font-semibold text-sm mb-4">Your Team</h3>
                 <RedirectWithFadeButton
-                  to="/fantasy"
+                  to="https://fantasy.rff.giize.com/"
                   className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm transition-colors text-left"
                 >
                   Manage My Team
@@ -306,7 +306,11 @@ const LeaderboardPage = () => {
                 <h3 className="font-semibold text-sm mb-4">Latest News</h3>
                 <div className="space-y-4">
                   {news.map((item) => (
-                    <a key={item.id} href="/news" className="group block">
+                    <a
+                      key={item.id}
+                      href={`https://rff.giize.com/news/${item.id}`}
+                      className="group block"
+                    >
                       <div className="aspect-video bg-white/5 rounded-lg mb-3 overflow-hidden">
                         {item.image_url && (
                           <Image

@@ -336,7 +336,7 @@ const RFL = () => {
                 Matches
               </a>
               <a
-                href="https://rff.giize.com/fantasy"
+                href="https://fantasy.rff.giize.com/"
                 className="text-sm font-medium text-white/80 hover:text-white transition-colors"
               >
                 Fantasy
@@ -679,7 +679,7 @@ const RFL = () => {
 
                 <div className="flex">
                   <RedirectWithFadeButton
-                    to="/fantasy/leaderboard"
+                    to="https://leaderboard.rff.giize.com/"
                     className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm transition-colors text-left"
                   >
                     Open Leaderboard
@@ -698,7 +698,7 @@ const RFL = () => {
 
                 <div className="flex">
                   <RedirectWithFadeButton
-                    to="/fantasy"
+                    to="https://fantasy.rff.giize.com/"
                     className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm transition-colors text-left"
                   >
                     Start Now!

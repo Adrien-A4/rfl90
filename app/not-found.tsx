@@ -36,7 +36,7 @@ export default function SharedProfileNotFound() {
           </Link>
 
           <Link
-            href="https://rff.giize.com/fantasy"
+            href="https://fantasy.rff.giize.com/"
             className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#333333] bg-[#111111] px-4 text-sm font-semibold text-[#c9efcf] transition-all duration-150 hover:bg-[#1b1b1b] hover:border-[#555555]"
           >
             <RefreshCcw className="size-4" />
