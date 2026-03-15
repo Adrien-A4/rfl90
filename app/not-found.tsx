@@ -28,7 +28,7 @@ export default function SharedProfileNotFound() {
 
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <Link
-            href="/"
+            href="https://rff.giize.com/"
             className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#333333] bg-[#111111] px-4 text-sm font-semibold text-[#c9efcf] transition-all duration-150 hover:bg-[#1b1b1b] hover:border-[#555555]"
           >
             <Home className="size-4" />
@@ -36,7 +36,7 @@ export default function SharedProfileNotFound() {
           </Link>
 
           <Link
-            href="/fantasy"
+            href="https://rff.giize.com/fantasy"
             className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#333333] bg-[#111111] px-4 text-sm font-semibold text-[#c9efcf] transition-all duration-150 hover:bg-[#1b1b1b] hover:border-[#555555]"
           >
             <RefreshCcw className="size-4" />

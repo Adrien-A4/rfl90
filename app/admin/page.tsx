@@ -772,7 +772,7 @@ export default function AdminPage() {
             </div>
           )}
           <a
-            href="/"
+            href="https://rff.giize.com/"
             className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white font-medium transition-colors"
           >
             Return Home

@@ -152,19 +152,19 @@ const LeaderboardPage = () => {
             </div>
             <nav className="flex items-center gap-6">
               <a
-                href="/news"
+                href="https://rff.giize.com/news"
                 className="text-sm font-medium text-white/80 hover:text-white"
               >
                 News
               </a>
               <a
-                href="/matches"
+                href="https://rff.giize.com/matches"
                 className="text-sm font-medium text-white/80 hover:text-white"
               >
                 Matches
               </a>
               <a
-                href="/fantasy"
+                href="https://rff.giize.com/fantasy"
                 className="text-sm font-medium text-white/80 hover:text-white"
               >
                 Fantasy

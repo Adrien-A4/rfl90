@@ -126,7 +126,10 @@ const NewsPage = () => {
         <div className="max-w-6xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-8">
-              <a href="/" className="text-2xl font-bold tracking-tight">
+              <a
+                href="https://rff.giize.com/"
+                className="text-2xl font-bold tracking-tight"
+              >
                 <Image
                   src="/rff.png"
                   draggable={false}
@@ -138,19 +141,19 @@ const NewsPage = () => {
 
               <nav className="hidden md:flex items-center gap-6">
                 <a
-                  href="/news"
+                  href="https://rff.giize.com/news"
                   className="text-sm font-medium text-white transition-colors"
                 >
                   News
                 </a>
                 <a
-                  href="/matches"
+                  href="https://rff.giize.com/matches"
                   className="text-sm font-medium text-white/60 hover:text-white transition-colors"
                 >
                   Matches
                 </a>
                 <a
-                  href="/fantasy"
+                  href="https://rff.giize.com/fantasy"
                   className="text-sm font-medium text-white/60 hover:text-white transition-colors"
                 >
                   Fantasy

@@ -324,19 +324,19 @@ const RFL = () => {
 
             <nav className="flex items-center gap-6">
               <a
-                href="/news"
+                href="https://rff.giize.com/news"
                 className="text-sm font-medium text-white/80 hover:text-white transition-colors"
               >
                 News
               </a>
               <a
-                href="/matches"
+                href="https://rff.giize.com/matches"
                 className="text-sm font-medium text-white/80 hover:text-white transition-colors"
               >
                 Matches
               </a>
               <a
-                href="/fantasy"
+                href="https://rff.giize.com/fantasy"
                 className="text-sm font-medium text-white/80 hover:text-white transition-colors"
               >
                 Fantasy
@@ -372,7 +372,7 @@ const RFL = () => {
                     transition={{ delay: 0.15 + index * 0.02 }}
                     onClick={() =>
                       router.push(
-                        `/matches?league=${encodeURIComponent(league.name)}`,
+                        `https://rff.giize.com/matches?league=${encodeURIComponent(league.name)}`,
                       )
                     }
                     className={`league-item w-full flex items-center gap-3 p-3 rounded-lg ${
@@ -533,7 +533,9 @@ const RFL = () => {
                                 <div
                                   key={match.id}
                                   onClick={() =>
-                                    router.push(`/match/${match.id}`)
+                                    router.push(
+                                      `https://rff.giize.com/match/${match.id}`,
+                                    )
                                   }
                                   className="match-card px-5 py-4 border-b border-white/5 last:border-0 cursor-pointer"
                                 >
@@ -710,7 +712,7 @@ const RFL = () => {
                   {news.map((item) => (
                     <a
                       key={item.id}
-                      href="/news"
+                      href="https://rff.giize.com/news"
                       className="group cursor-pointer block"
                     >
                       <div className="aspect-video bg-white/5 rounded-lg mb-3 overflow-hidden">
