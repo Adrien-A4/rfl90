@@ -233,14 +233,14 @@ export default function FantasyPage() {
         if (data.authenticated && data.user?.id) {
           setUserId(data.user.id);
         } else {
-          router.push("/login");
+          router.push("https://rff.giize.com/login");
         }
       } else {
-        router.push("/login");
+        router.push("https://rff.giize.com/login");
       }
     } catch (error) {
       console.error("Auth check failed:", error);
-      router.push("/login");
+      router.push("https://rff.giize.com/login");
     }
   };
 

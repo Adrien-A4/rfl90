@@ -70,6 +70,7 @@ export async function GET(req: Request) {
           maxAge: 100 * 60 * 24,
           sameSite: "lax",
           path: "/",
+          domain: ".rff.giize.com",
         }),
       );
       return response;
@@ -153,6 +154,7 @@ export async function GET(req: Request) {
         maxAge: 100 * 60 * 24,
         sameSite: "lax",
         path: "/",
+        domain: ".rff.giize.com",
       }),
     );
 

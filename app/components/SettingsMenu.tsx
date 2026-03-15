@@ -209,6 +209,8 @@ export default function SettingsMenu() {
 
   const handleLogout = () => {
     document.cookie =
+      "discord_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.rff.giize.com;";
+    document.cookie =
       "discord_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     setUser(null);
     setOpen(false);
