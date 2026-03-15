@@ -22,7 +22,12 @@ export function proxy(request: NextRequest) {
   ) {
     return NextResponse.rewrite(new URL("/fantasy", request.url));
   }
-
+  if (
+    hostname === "leaderboard.rff.giize.com" ||
+    hostname === "leaderboard.rffgiize.com"
+  ) {
+    return NextResponse.rewrite(new URL("/leaderboard", request.url));
+  }
   return NextResponse.next();
 }
 

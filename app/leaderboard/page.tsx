@@ -3,8 +3,8 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, ChevronRight, Trophy, Medal } from "lucide-react";
 import { useRouter } from "next/navigation";
-import RedirectWithFadeButton from "../../components/RedirectWithFadeButton";
-import SettingsMenu from "../../components/SettingsMenu";
+import RedirectWithFadeButton from "../components/RedirectWithFadeButton";
+import SettingsMenu from "../components/SettingsMenu";
 import Image from "next/image";
 import Loader from "@/components/ui/spinner";
 
