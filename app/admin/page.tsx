@@ -157,6 +157,9 @@ export default function AdminPage() {
   >([]);
   const [loadingImages, setLoadingImages] = useState(false);
   const [deletingImage, setDeletingImage] = useState<string | null>(null);
+  const [imageUploadOpen, setImageUploadOpen] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
 
   const fetchCloudinaryImages = async () => {
     setLoadingImages(true);
@@ -238,6 +241,34 @@ export default function AdminPage() {
     } finally {
       setUploadingImage(false);
     }
+  };
+
+  const handleImageFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleUploadFromPreview = async () => {
+    if (selectedImageFile) {
+      await handleImageUpload(selectedImageFile);
+      setImagePreview(null);
+      setSelectedImageFile(null);
+      setImageUploadOpen(false);
+      fetchCloudinaryImages();
+    }
+  };
+
+  const closeImageUploadDialog = () => {
+    setImageUploadOpen(false);
+    setImagePreview(null);
+    setSelectedImageFile(null);
   };
 
   const fetchRobloxAvatar = async (username: string) => {
@@ -1577,21 +1608,13 @@ export default function AdminPage() {
                     Cloudinary Images
                   </h3>
                   <div className="flex gap-2">
-                    <label className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors cursor-pointer disabled:opacity-50">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            handleImageUpload(file);
-                          }
-                        }}
-                        disabled={uploadingImage}
-                      />
-                      {uploadingImage ? "Uploading..." : "Upload"}
-                    </label>
+                    <button
+                      onClick={() => setImageUploadOpen(true)}
+                      className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Image
+                    </button>
                     <button
                       onClick={fetchCloudinaryImages}
                       disabled={loadingImages}
@@ -2590,6 +2613,66 @@ export default function AdminPage() {
               >
                 Delete
               </button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={imageUploadOpen}
+          onOpenChange={(open) => !open && closeImageUploadDialog()}
+        >
+          <DialogContent className="bg-[#1a1a1a] border-white/10 text-white">
+            <DialogHeader>
+              <DialogTitle>Add New Image</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {imagePreview ? (
+                <div className="relative w-full aspect-video bg-white/5 rounded-lg overflow-hidden">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="w-full h-full object-contain"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImagePreview(null);
+                      setSelectedImageFile(null);
+                    }}
+                    className="absolute top-2 right-2 p-1 bg-black/50 rounded-full hover:bg-black/70 transition-colors"
+                  >
+                    <X className="w-4 h-4 text-white" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center w-full aspect-video border-2 border-dashed border-white/20 rounded-lg hover:border-white/40 transition-colors cursor-pointer bg-white/5">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageFileSelect}
+                  />
+                  <Cloud className="w-12 h-12 text-white/40 mb-2" />
+                  <span className="text-white/60">
+                    Click to select an image
+                  </span>
+                </label>
+              )}
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={closeImageUploadDialog}
+                  className="flex-1 px-4 py-2 bg-white/5 rounded-lg text-white font-medium hover:bg-white/10 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUploadFromPreview}
+                  disabled={!selectedImageFile || uploadingImage}
+                  className="flex-1 px-4 py-2 bg-white/10 rounded-lg text-white font-medium hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {uploadingImage ? "Uploading..." : "Upload"}
+                </button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
