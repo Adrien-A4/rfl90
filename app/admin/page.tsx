@@ -485,6 +485,10 @@ export default function AdminPage() {
   };
 
   const handleAdd = (type: Tab) => {
+    if (type === "images") {
+      setImageUploadOpen(true);
+      return;
+    }
     setEditingItem(null);
     setFormData({});
     setModalOpen(true);
@@ -1610,9 +1614,8 @@ export default function AdminPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => setImageUploadOpen(true)}
-                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
                     >
-                      <Plus className="w-4 h-4" />
                       Add Image
                     </button>
                     <button
